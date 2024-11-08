@@ -1,7 +1,5 @@
-import React, { useState } from 'react';
-// import { Camera } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import './App.css';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Song {
   title: string;
@@ -15,6 +13,8 @@ const SpotifyPlaylistCards: React.FC = () => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [isInfoVisible, setIsInfoVisible] = useState<boolean>(false);
 
   const generateQRCode = (previewUrl: string): string => {
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(previewUrl)}`;
@@ -28,12 +28,13 @@ const SpotifyPlaylistCards: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      setCurrentIndex(0);
+      setIsInfoVisible(false);
 
-      // Example: https://open.spotify.com/playlist/1Bpgr72vuJwYXYqbdahtOO
-      const playlistId = playlistUrl.split('/').at(-1);
+      const playlistId = playlistUrl.split('/')[4];
       const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
         headers: {
-          'Authorization': 'Bearer BQAQE1dCFKe61vSilKyRw8GlmTOE0B2C7zqD_mI0ILNx3clymwnTe8c_B3dD2JrKDND1xCWZHwenBC6xOul1nx9NGlgFQgFLICtTRGwi0ujKls9iZYc'
+          'Authorization': `Bearer ${import.meta.env.VITE_SPOTIFY_ACCESS_TOKEN}`
         }
       });
 
@@ -57,6 +58,33 @@ const SpotifyPlaylistCards: React.FC = () => {
     }
   };
 
+  const handlePrevious = () => {
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : songs.length - 1));
+    setIsInfoVisible(false);
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev < songs.length - 1 ? prev + 1 : 0));
+    setIsInfoVisible(false);
+  };
+
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (songs.length > 0) {
+        if (event.key === 'ArrowLeft') {
+          handlePrevious();
+        } else if (event.key === 'ArrowRight') {
+          handleNext();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [songs.length]);
+
   return (
     <div className="flex flex-col items-center">
       <div className="mb-4">
@@ -67,35 +95,67 @@ const SpotifyPlaylistCards: React.FC = () => {
           onChange={handlePlaylistUrlChange}
           className="p-2 border rounded w-full max-w-md"
         />
-        <button onClick={handleSubmit} className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+        <button 
+          onClick={handleSubmit} 
+          className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
+        >
           Generate Cards
         </button>
       </div>
 
       {loading && (
-        <Alert variant="default">
-          <AlertTitle>Loading...</AlertTitle>
-          <AlertDescription>Fetching playlist data from Spotify.</AlertDescription>
-        </Alert>
+        <div className="text-center p-4">Loading...</div>
       )}
 
       {error && (
-        <Alert variant="destructive">
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+        <div className="text-red-500 p-4">{error}</div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {songs.map((song, index) => (
-          <div key={index} className="bg-white shadow-md rounded-md p-4 flex flex-col items-center">
-            <img src={generateQRCode(song.previewUrl)} alt={`QR Code for ${song.title}`} className="w-full max-w-[150px] mb-2" />
-            <div className="w-full border-b border-gray-300 mb-2" />
-            <h3 className="text-lg font-medium">{song.title}</h3>
-            <p className="text-gray-500">{song.year} - {song.artist}</p>
+      {songs.length > 0 && (
+        <div className="flex flex-col items-center bg-white shadow-md rounded-md p-4 w-full max-w-md">
+          <img 
+            src={generateQRCode(songs[currentIndex].previewUrl)} 
+            alt={`QR Code for ${songs[currentIndex].title}`} 
+            className="w-full max-w-[200px] mb-4"
+          />
+          
+          <button
+            onClick={() => setIsInfoVisible(!isInfoVisible)}
+            className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-between"
+          >
+            <span>Click here to reveal info...</span>
+            {isInfoVisible ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          </button>
+          
+          {isInfoVisible && (
+            <div className="w-full mt-2 p-2">
+              <h3 className="text-lg font-medium">{songs[currentIndex].title}</h3>
+              <p className="text-gray-500">
+                {songs[currentIndex].year} - {songs[currentIndex].artist}
+              </p>
+            </div>
+          )}
+
+          <div className="flex justify-between w-full mt-4">
+            <button
+              onClick={handlePrevious}
+              className="flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded"
+            >
+              <ChevronLeft size={20} className="mr-1" /> Previous
+            </button>
+            <button
+              onClick={handleNext}
+              className="flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded"
+            >
+              Next <ChevronRight size={20} className="ml-1" />
+            </button>
           </div>
-        ))}
-      </div>
+          
+          <div className="text-gray-400 text-sm mt-2">
+            Song {currentIndex + 1} of {songs.length}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
