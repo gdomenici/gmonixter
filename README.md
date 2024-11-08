@@ -1,8 +1,11 @@
 # Guido-Monixter Board Game
 
 ## Development instructions
+## Only once
 * Get your `client_id` and `client_secret` from https://developer.spotify.com/dashboard/8ff46945b7414e13a7cabb0e9ac3ca8d/settings
+* Paste them in .env, respectively as `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`
 * Paste them in the right place in `tools/request-spotify-token.sh`
+## Every time the token expires
 * Run that script
 * Paste the result into `.env` as in `VITE_SPOTIFY_ACCESS_TOKEN=the_token`
 

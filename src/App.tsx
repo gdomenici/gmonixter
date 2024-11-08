@@ -24,6 +24,24 @@ const SpotifyPlaylistCards: React.FC = () => {
     setPlaylistUrl(e.target.value);
   };
 
+  // Fisher-Yates shuffle algorithm
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  const extractPlaylistId = (url: string): string => {
+    // Remove any query parameters
+    const baseUrl = url.split('?')[0];
+    // Split by '/' and get the playlist ID
+    const parts = baseUrl.split('/');
+    return parts[4] || '';
+  };
+
   const handleSubmit = async () => {
     try {
       setLoading(true);
@@ -31,7 +49,11 @@ const SpotifyPlaylistCards: React.FC = () => {
       setCurrentIndex(0);
       setIsInfoVisible(false);
 
-      const playlistId = playlistUrl.split('/')[4];
+      const playlistId = extractPlaylistId(playlistUrl);
+      if (!playlistId) {
+        throw new Error('Invalid playlist URL');
+      }
+
       const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SPOTIFY_ACCESS_TOKEN}`
@@ -43,15 +65,29 @@ const SpotifyPlaylistCards: React.FC = () => {
       }
 
       const data = await response.json();
-      setSongs(data.items.map((item: any) => ({
-        title: item.track.name,
-        year: new Date(item.track.album.release_date).getFullYear(),
-        artist: item.track.artists[0].name,
-        previewUrl: item.track.preview_url
-      })));
+      
+      // Filter out songs without preview URLs and map to our Song interface
+      const validSongs = data.items
+        .filter((item: any) => item.track && item.track.preview_url)
+        .map((item: any) => ({
+          title: item.track.name,
+          year: new Date(item.track.album.release_date).getFullYear(),
+          artist: item.track.artists[0].name,
+          previewUrl: item.track.preview_url
+        }));
+
+      if (validSongs.length === 0) {
+        throw new Error('No playable songs found in this playlist');
+      }
+
+      // Shuffle the filtered songs
+      const shuffledSongs: Song[] = shuffleArray(validSongs);
+      setSongs(shuffledSongs);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
+      } else {
+        setError('An unexpected error occurred');
       }
     } finally {
       setLoading(false);
