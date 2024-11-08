@@ -1,13 +1,17 @@
-# React + TypeScript + Vite
+# Guido-Monixter Board Game
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Development instructions
+* Get your `client_id` and `client_secret` from https://developer.spotify.com/dashboard/8ff46945b7414e13a7cabb0e9ac3ca8d/settings
+* Paste them in the right place in `tools/request-spotify-token.sh`
+* Run that script
+* Paste the result into `.env` as in `VITE_SPOTIFY_ACCESS_TOKEN=the_token`
 
-Currently, two official plugins are available:
+## Running & playing the game
+* To start a dev server: `npm run dev` then navigate to http://localhost:5173/
+* Input a Spotify playlist URL, such as https://open.spotify.com/playlist/1Bpgr72vuJwYXYqbdahtOO
+* Scan each QR code with a phone, and guess the song from the 30-second preview.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
+## Original dev instructions: Expanding the ESLint configuration
 
 If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
 
@@ -48,3 +52,6 @@ export default tseslint.config({
   },
 })
 ```
+
+# TODO
+* Shuffle the Spotify playlist
