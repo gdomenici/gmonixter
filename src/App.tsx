@@ -13,6 +13,18 @@ interface Song {
   previewUrl: string;
 }
 
+const tokenHasExpired = () => {
+  const expiration = localStorage.getItem("expires");
+  if (!expiration || new Date() > new Date(expiration)) {
+    return true;
+  }
+  return false;
+};
+
+const getToken = () => {
+  return localStorage.getItem("access_token") || null;
+};
+
 const SpotifyPlaylistCards: React.FC = () => {
   const [playlistUrl, setPlaylistUrl] = useState<string>("");
   const [songs, setSongs] = useState<Song[]>([]);
@@ -20,7 +32,6 @@ const SpotifyPlaylistCards: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isInfoVisible, setIsInfoVisible] = useState<boolean>(false);
-  const [isUserLoggedOn, setIsUserLoggedOn] = useState<boolean>(true);
 
   const generateQRCode = (previewUrl: string): string => {
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
@@ -62,13 +73,12 @@ const SpotifyPlaylistCards: React.FC = () => {
         throw new Error("Invalid playlist URL");
       }
 
+      const token = getToken();
       const response = await fetch(
         `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
         {
           headers: {
-            Authorization: `Bearer ${
-              import.meta.env.VITE_SPOTIFY_ACCESS_TOKEN
-            }`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -139,11 +149,11 @@ const SpotifyPlaylistCards: React.FC = () => {
     };
   }, [songs.length]);
 
-  return (
-    // CONTINUE HERE: figure out the OAuth2 workflow https://developer.spotify.com/documentation/web-api/tutorials/code-flow
-
-    <div className="flex flex-col items-center">
-      {!isUserLoggedOn && (
+  // The user doesnt have a valid token
+  // TODO: handle the case where the token has expired differently (use refresh tokens, i.e. no need to reauthenticate)
+  if (!getToken() || tokenHasExpired()) {
+    return (
+      <div className="flex flex-col items-center">
         <div className="mb-4">
           <button
             onClick={handleAuthentication}
@@ -152,9 +162,16 @@ const SpotifyPlaylistCards: React.FC = () => {
             <span>Click here to authorize with Spotify...</span>
           </button>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {isUserLoggedOn && (
+  // Normal case - the user is logged on
+  return (
+    // CONTINUE HERE: figure out the OAuth2 workflow https://developer.spotify.com/documentation/web-api/tutorials/code-flow
+
+    <div className="flex flex-col items-center">
+      {
         <div className="mb-4">
           <input
             type="text"
@@ -170,7 +187,7 @@ const SpotifyPlaylistCards: React.FC = () => {
             Generate Cards
           </button>
         </div>
-      )}
+      }
 
       {loading && <div className="text-center p-4">Loading...</div>}
 
