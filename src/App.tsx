@@ -117,6 +117,11 @@ const SpotifyPlaylistCards: React.FC = () => {
     setIsInfoVisible(false);
   };
 
+  const handleAuthentication = () => {
+    window.location.href = "authorize.html";
+    return <></>;
+  };
+
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (songs.length > 0) {
@@ -138,6 +143,17 @@ const SpotifyPlaylistCards: React.FC = () => {
     // CONTINUE HERE: figure out the OAuth2 workflow https://developer.spotify.com/documentation/web-api/tutorials/code-flow
 
     <div className="flex flex-col items-center">
+      {!isUserLoggedOn && (
+        <div className="mb-4">
+          <button
+            onClick={handleAuthentication}
+            className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-between"
+          >
+            <span>Click here to authorize with Spotify...</span>
+          </button>
+        </div>
+      )}
+
       {isUserLoggedOn && (
         <div className="mb-4">
           <input
