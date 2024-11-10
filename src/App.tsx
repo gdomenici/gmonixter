@@ -16,6 +16,7 @@ interface Song {
 interface Release {
   year: number;
   country: string;
+  mediaFormat: string;
 }
 
 const tokenHasExpired = () => {
@@ -88,6 +89,7 @@ const SpotifyPlaylistCards: React.FC = () => {
         .map((item: any) => ({
           year: new Date(item.date).getFullYear(),
           country: item.country,
+          mediaFormat: item.media?.[0]?.format,
         }))
         .sort((a: Release, b: Release) => {
           return a.year - b.year;
@@ -165,16 +167,32 @@ const SpotifyPlaylistCards: React.FC = () => {
   const handlePrevious = () => {
     setCurrentIndex((prev) => (prev > 0 ? prev - 1 : songs.length - 1));
     setIsInfoVisible(false);
+    setReleases([]);
   };
 
   const handleNext = () => {
     setCurrentIndex((prev) => (prev < songs.length - 1 ? prev + 1 : 0));
     setIsInfoVisible(false);
+    setReleases([]);
   };
 
   const handleAuthentication = () => {
     window.location.href = "authorize.html";
     return <></>;
+  };
+
+  const renderReleasesRows = () => {
+    const rows: any = [];
+    releases.forEach((oneRelease: Release) => {
+      rows.push(
+        <tr>
+          <td>{oneRelease.year}</td>
+          <td>{oneRelease.country}</td>
+          <td>{oneRelease.mediaFormat}</td>
+        </tr>
+      );
+    });
+    return rows;
   };
 
   useEffect(() => {
@@ -278,6 +296,19 @@ const SpotifyPlaylistCards: React.FC = () => {
               >
                 Click to see extra releases...
               </a>
+
+              {releases.length > 0 && (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Year</th>
+                      <th>Country</th>
+                      <th>Format</th>
+                    </tr>
+                  </thead>
+                  <tbody>{renderReleasesRows()}</tbody>
+                </table>
+              )}
             </div>
           )}
 
