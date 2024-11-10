@@ -13,6 +13,11 @@ interface Song {
   previewUrl: string;
 }
 
+interface Release {
+  year: number;
+  country: string;
+}
+
 const tokenHasExpired = () => {
   const expiration = localStorage.getItem("expires");
   if (!expiration || new Date() > new Date(expiration)) {
@@ -28,6 +33,7 @@ const getToken = () => {
 const SpotifyPlaylistCards: React.FC = () => {
   const [playlistUrl, setPlaylistUrl] = useState<string>("");
   const [songs, setSongs] = useState<Song[]>([]);
+  const [releases, setReleases] = useState<Release[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
@@ -53,6 +59,51 @@ const SpotifyPlaylistCards: React.FC = () => {
     // Split by '/' and get the playlist ID
     const parts = baseUrl.split("/");
     return parts[4] || "";
+  };
+
+  const handleLoadExtraReleases = async (title: string, artist: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const musicBrainzUrl = new URL("https://musicbrainz.org/ws/2/release");
+      musicBrainzUrl.searchParams.set(
+        "query",
+        `"${title}" AND artist:${artist}"`
+      );
+      musicBrainzUrl.searchParams.set("fmt", "json");
+
+      console.log(`Query is: ${musicBrainzUrl.toString()}`);
+      const response = await fetch(musicBrainzUrl.toString());
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch releases data");
+      }
+
+      const data = await response.json();
+
+      // Filter out releases without date or which are unofficial
+      const tempReleases: Release[] = data.releases
+        .filter((item: any) => item.date && item.status === "Official")
+        .map((item: any) => ({
+          year: new Date(item.date).getFullYear(),
+          country: item.country,
+        }))
+        .sort((a: Release, b: Release) => {
+          return a.year - b.year;
+        });
+
+      // console.log(`Results:\n${JSON.stringify(tempReleases, null, 2)}`);
+      setReleases(tempReleases);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unexpected error occurred");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -214,6 +265,19 @@ const SpotifyPlaylistCards: React.FC = () => {
               <p className="text-gray-500">
                 {songs[currentIndex].year} - {songs[currentIndex].artist}
               </p>
+
+              <a
+                href="#"
+                onClick={() =>
+                  handleLoadExtraReleases(
+                    songs[currentIndex].title,
+                    songs[currentIndex].artist
+                  )
+                }
+                className="text-gray-500"
+              >
+                Click to see extra releases...
+              </a>
             </div>
           )}
 
