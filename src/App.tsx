@@ -33,12 +33,6 @@ const SpotifyPlaylistCards: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isInfoVisible, setIsInfoVisible] = useState<boolean>(false);
 
-  const generateQRCode = (previewUrl: string): string => {
-    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-      previewUrl
-    )}`;
-  };
-
   const handlePlaylistUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPlaylistUrl(e.target.value);
   };
@@ -150,7 +144,6 @@ const SpotifyPlaylistCards: React.FC = () => {
   }, [songs.length]);
 
   // The user doesnt have a valid token
-  // TODO: handle the case where the token has expired differently (use refresh tokens, i.e. no need to reauthenticate)
   if (!getToken() || tokenHasExpired()) {
     return (
       <div className="flex flex-col items-center">
@@ -168,8 +161,6 @@ const SpotifyPlaylistCards: React.FC = () => {
 
   // Normal case - the user is logged on
   return (
-    // CONTINUE HERE: figure out the OAuth2 workflow https://developer.spotify.com/documentation/web-api/tutorials/code-flow
-
     <div className="flex flex-col items-center">
       {
         <div className="mb-4">
@@ -195,11 +186,13 @@ const SpotifyPlaylistCards: React.FC = () => {
 
       {songs.length > 0 && (
         <div className="flex flex-col items-center bg-white shadow-md rounded-md p-4 w-full max-w-md">
-          <img
-            src={generateQRCode(songs[currentIndex].previewUrl)}
-            alt={`QR Code for ${songs[currentIndex].title}`}
-            className="w-full max-w-[200px] mb-4"
-          />
+          <div>
+            <audio
+              src={songs[currentIndex].previewUrl}
+              controls
+              className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-between"
+            ></audio>
+          </div>
 
           <button
             onClick={() => setIsInfoVisible(!isInfoVisible)}
