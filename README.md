@@ -9,6 +9,6 @@
 # TODO
 
 - Show the album cover art (https://developer.spotify.com/documentation/web-api/reference/get-track, `songs[currentIndex].album.images`)
-- Rename to gmonixter
+- Figure out the Tailwind thing
 - Handle the case where the token has expired differently (use refresh tokens, i.e. no need to reauthenticate)
 - Possibility to alternate between player view and QR code view (see doc/README.md)

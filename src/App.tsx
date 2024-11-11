@@ -40,6 +40,7 @@ const SpotifyPlaylistCards: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isInfoVisible, setIsInfoVisible] = useState<boolean>(false);
+  const [isNewGame, setIsNewGame] = useState<boolean>(true);
 
   const handlePlaylistUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPlaylistUrl(e.target.value);
@@ -167,6 +168,7 @@ const SpotifyPlaylistCards: React.FC = () => {
       // Shuffle the filtered songs
       const shuffledSongs: Song[] = shuffleArray(validSongs);
       setSongs(shuffledSongs);
+      setIsNewGame(false);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -243,26 +245,33 @@ const SpotifyPlaylistCards: React.FC = () => {
     );
   }
 
+  if (isNewGame) {
+    return (
+      <div className="mb-4">
+        <div>
+        <img width="300px" src="logo.png"></img>
+        </div>
+      <input
+        type="text"
+        placeholder="Paste Spotify Playlist URL"
+        value={playlistUrl}
+        onChange={handlePlaylistUrlChange}
+        className="p-2 border rounded w-full max-w-md"
+      />
+      <button
+        onClick={handleSubmit}
+        className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
+      >
+        💃🏻 Get Songs 🕺🏻
+      </button>
+    </div>
+
+    );
+  }
+
   // Normal case - the user is logged on
   return (
     <div className="flex flex-col items-center">
-      {
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Paste Spotify Playlist URL"
-            value={playlistUrl}
-            onChange={handlePlaylistUrlChange}
-            className="p-2 border rounded w-full max-w-md"
-          />
-          <button
-            onClick={handleSubmit}
-            className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
-          >
-            Generate Cards
-          </button>
-        </div>
-      }
 
       {loading && <div className="text-center p-4">Loading...</div>}
 
@@ -309,7 +318,7 @@ const SpotifyPlaylistCards: React.FC = () => {
                 }
                 className="text-gray-500"
               >
-                Click to see extra releases...
+                Click to see other releases...
               </a>
 
               {releases.length > 0 && (
@@ -346,6 +355,10 @@ const SpotifyPlaylistCards: React.FC = () => {
           <div className="text-gray-400 text-sm mt-2">
             Song {currentIndex + 1} of {songs.length}
           </div>
+          <button onClick={() => {setIsNewGame(true)}}  className="flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded"
+        >
+          New Game
+        </button>
         </div>
       )}
     </div>
