@@ -106,7 +106,7 @@ if (!code) {
    * PHASE 2: we have obtained the code from Spotify
    */
   var container = document.getElementById("root")!;
-  container.innerHTML = `<h1>Code obtained: ${code}</h1>`;
+  container.innerHTML = `<div>Authenticated. Redirecting...</div>`;
   // Callback's query string param:
   //  code=AQBl8SFUOXuPoFqs3_OyL_wrHxajZvb3oyofC3Eux7vpuJ2QubBJKzF5bB9wgtwgW6IfztEpF-hmn-YtQXH3jyZomSdaWk8y-Xw3ToS_D53jos19vW4OXaEnyPyfjLAb-_l0DYx0poy13wGy4TG7zf50Jrj3euE2NHq-jhP9N36n_PVZCBuwu4rRRtF1PGCDS8Zflludcf5t3b8BDQs7Vj0lQOtGWy3_ktsNGcJVU2v9e1dEiEt2XEGVuBFNiHoqgxlbRMkMtRXvgvxxBlR1ajCX
   const token = await getToken(code);
