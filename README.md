@@ -8,7 +8,6 @@
 
 # TODO
 
-- Refine accuracy of previous releases
 - Show the album cover art (https://developer.spotify.com/documentation/web-api/reference/get-track, `songs[currentIndex].album.images`)
 - Rename to gmonixter
 - Handle the case where the token has expired differently (use refresh tokens, i.e. no need to reauthenticate)

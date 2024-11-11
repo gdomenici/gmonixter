@@ -17,6 +17,7 @@ interface Release {
   year: number;
   country: string;
   mediaFormat: string;
+  artistCredit: string;
 }
 
 const tokenHasExpired = () => {
@@ -67,12 +68,21 @@ const SpotifyPlaylistCards: React.FC = () => {
       setLoading(true);
       setError(null);
 
+      let truncatedTitle = title;
+      const remasteredIndex = title.search(/\-?\s?remastered/i);
+      if (remasteredIndex > 0) {
+        truncatedTitle = title.substring(0, remasteredIndex).trim();
+      }
+      console.log(`truncatedTitle is ${truncatedTitle}`);
+
+      // https://musicbrainz.org/doc/MusicBrainz_API/Search
       const musicBrainzUrl = new URL("https://musicbrainz.org/ws/2/release");
       musicBrainzUrl.searchParams.set(
         "query",
-        `"${title}" AND artist:${artist}"`
+        `"${truncatedTitle}" AND artist:"${artist}"`
       );
       musicBrainzUrl.searchParams.set("fmt", "json");
+      musicBrainzUrl.searchParams.set("limit", "10");
 
       console.log(`Query is: ${musicBrainzUrl.toString()}`);
       const response = await fetch(musicBrainzUrl.toString());
@@ -85,11 +95,15 @@ const SpotifyPlaylistCards: React.FC = () => {
 
       // Filter out releases without date or which are unofficial
       const tempReleases: Release[] = data.releases
-        .filter((item: any) => item.date && item.status === "Official")
+        .filter(
+          (item: any) =>
+            item.date && item.status === "Official" && item.score >= 85
+        )
         .map((item: any) => ({
           year: new Date(item.date).getFullYear(),
           country: item.country,
           mediaFormat: item.media?.[0]?.format,
+          artistCredit: item["artist-credit"]?.[0]?.name,
         }))
         .sort((a: Release, b: Release) => {
           return a.year - b.year;
@@ -189,6 +203,7 @@ const SpotifyPlaylistCards: React.FC = () => {
           <td>{oneRelease.year}</td>
           <td>{oneRelease.country}</td>
           <td>{oneRelease.mediaFormat}</td>
+          <td>{oneRelease.artistCredit}</td>
         </tr>
       );
     });
@@ -304,6 +319,7 @@ const SpotifyPlaylistCards: React.FC = () => {
                       <th>Year</th>
                       <th>Country</th>
                       <th>Format</th>
+                      <th>Artist credit</th>
                     </tr>
                   </thead>
                   <tbody>{renderReleasesRows()}</tbody>

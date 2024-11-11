@@ -93,7 +93,15 @@ const getToken = async (code: string) => {
 
 const args = new URLSearchParams(window.location.search);
 const code = args.get("code");
-if (code) {
+if (!code) {
+  /*
+   * PHASE 1: we go to obtain the code from Spotify
+   */
+  const authUrl = await generateAuthUrl();
+  console.log(`About to open ${authUrl}`);
+  // https://developer.mozilla.org/en-US/docs/Web/API/Window/open
+  window.location.href = authUrl;
+} else {
   /*
    * PHASE 2: we have obtained the code from Spotify
    */
@@ -106,19 +114,5 @@ if (code) {
   //  { access_token, refresh_token, expires_in }
   // Saves it in local storage
   currentToken.save(token);
-  window.open("index.html");
-} else {
-  /*
-   * PHASE 1: we go to obtain the code from Spotify
-   */
-  const authUrl = await generateAuthUrl();
-  console.log(`About to open ${authUrl}`);
-  // https://developer.mozilla.org/en-US/docs/Web/API/Window/open
-  window.open(authUrl);
+  window.location.href = "index.html";
 }
-
-// ReactDOM.createRoot(document.getElementById("root")!).render(
-//   <React.StrictMode>
-//     <Authorize />
-//   </React.StrictMode>
-// );
