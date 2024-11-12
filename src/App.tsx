@@ -249,30 +249,28 @@ const SpotifyPlaylistCards: React.FC = () => {
     return (
       <div className="mb-4">
         <div>
-        <img width="300px" src="logo.png"></img>
+          <img width="300px" src="logo.png"></img>
         </div>
-      <input
-        type="text"
-        placeholder="Paste Spotify Playlist URL"
-        value={playlistUrl}
-        onChange={handlePlaylistUrlChange}
-        className="p-2 border rounded w-full max-w-md"
-      />
-      <button
-        onClick={handleSubmit}
-        className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
-      >
-        💃🏻 Get Songs 🕺🏻
-      </button>
-    </div>
-
+        <input
+          type="text"
+          placeholder="Paste Spotify Playlist URL"
+          value={playlistUrl}
+          onChange={handlePlaylistUrlChange}
+          className="p-2 border rounded w-full max-w-md"
+        />
+        <button
+          onClick={handleSubmit}
+          className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
+        >
+          💃🏻 Get Songs 🕺🏻
+        </button>
+      </div>
     );
   }
 
   // Normal case - the user is logged on
   return (
     <div className="flex flex-col items-center">
-
       {loading && <div className="text-center p-4">Loading...</div>}
 
       {error && <div className="text-red-500 p-4">{error}</div>}
@@ -283,7 +281,7 @@ const SpotifyPlaylistCards: React.FC = () => {
             <audio
               src={songs[currentIndex].previewUrl}
               controls
-              className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-between"
+              className="py-4 px-8 hover:bg-gray-200"
             ></audio>
           </div>
 
@@ -355,10 +353,17 @@ const SpotifyPlaylistCards: React.FC = () => {
           <div className="text-gray-400 text-sm mt-2">
             Song {currentIndex + 1} of {songs.length}
           </div>
-          <button onClick={() => {setIsNewGame(true)}}  className="flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded"
-        >
-          New Game
-        </button>
+          <div className="w-full mt-2 p-2">
+            <a
+              href="#"
+              onClick={() => {
+                setIsNewGame(true);
+              }}
+              className="py-1 px-3 text-xs rounded hover:bg-blue-500"
+            >
+              <span>New Game</span>
+            </a>
+          </div>
         </div>
       )}
     </div>
