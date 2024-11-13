@@ -8,7 +8,8 @@
 
 # TODO
 
-- Show the album cover art (https://developer.spotify.com/documentation/web-api/reference/get-track, `songs[currentIndex].album.images`)
-- Figure out the Tailwind thing
+- MRU of recently used playlists
+- Allow selecting part of the title for "previous releases" lookups
 - Handle the case where the token has expired differently (use refresh tokens, i.e. no need to reauthenticate)
+- Party mode 🕺🏻
 - Possibility to alternate between player view and QR code view (see doc/README.md)
