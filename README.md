@@ -3,12 +3,14 @@
 ## Running & playing the game
 
 - To start a dev server: `npm run dev` then navigate to http://localhost:5173/
+- Authenticate with Spotify if necessary
 - Input a Spotify playlist URL, such as https://open.spotify.com/playlist/1Bpgr72vuJwYXYqbdahtOO
-- Scan each QR code with a phone, and guess the song from the 30-second preview.
+- Play!
 
 # TODO
 
 - MRU of recently used playlists
+- Use customized audio player (see https://chatgpt.com/c/67336a30-b9e8-800b-bca0-28ee8dac587d)
 - Allow selecting part of the title for "previous releases" lookups
 - Handle the case where the token has expired differently (use refresh tokens, i.e. no need to reauthenticate)
 - Party mode 🕺🏻

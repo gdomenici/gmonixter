@@ -283,13 +283,9 @@ const SpotifyPlaylistCards: React.FC = () => {
 
       {songs.length > 0 && (
         <div className="flex flex-col items-center bg-white shadow-md rounded-md p-4 w-full max-w-md">
-          <h1 className="text-blue-300 text-lg">Playing: {playlistName}</h1>
-          <div>
-            <audio
-              src={songs[currentIndex].previewUrl}
-              controls
-              className="py-4 px-8 hover:bg-gray-200"
-            ></audio>
+          <h1 className="text-blue-500 text-lg">Playlist: {playlistName}</h1>
+          <div className="py-4 px-8 hover:bg-blue-500">
+            <audio src={songs[currentIndex].previewUrl} controls></audio>
           </div>
 
           <button
