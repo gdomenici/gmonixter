@@ -10,7 +10,9 @@
 # TODO
 
 - MRU of recently used playlists
+- Allow more than 100 songs
 - Use customized audio player (see https://chatgpt.com/c/67336a30-b9e8-800b-bca0-28ee8dac587d)
+- Style the "other releases" table
 - Allow selecting part of the title for "previous releases" lookups
 - Handle the case where the token has expired differently (use refresh tokens, i.e. no need to reauthenticate)
 - Party mode 🕺🏻
