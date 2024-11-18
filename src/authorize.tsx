@@ -114,5 +114,5 @@ if (!code) {
   //  { access_token, refresh_token, expires_in }
   // Saves it in local storage
   currentToken.save(token);
-  window.location.href = "index.html";
+  window.location.href = "/";
 }

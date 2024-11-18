@@ -7,8 +7,13 @@
 - Input a Spotify playlist URL, such as https://open.spotify.com/playlist/1Bpgr72vuJwYXYqbdahtOO
 - Play!
 
+## Dev notes
+
+- Had to downgrade `@types/react` to `18.2.19` (`npm install @types/react@18.2.19`) on account of [this bug](https://github.com/creativetimofficial/material-tailwind/issues/528#issuecomment-1856348865).
+
 # TODO
 
+- Continue playlists gallery (remember to add error handling when retrieving categories)
 - MRU of recently used playlists
 - Allow more than 100 songs
 - Use customized audio player (see https://chatgpt.com/c/67336a30-b9e8-800b-bca0-28ee8dac587d)
