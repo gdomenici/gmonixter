@@ -13,7 +13,7 @@
 
 # TODO
 
-- Continue playlists gallery (remember to add error handling when retrieving categories)
+- Continue playlists gallery
 - MRU of recently used playlists
 - Allow more than 100 songs
 - Use customized audio player (see https://chatgpt.com/c/67336a30-b9e8-800b-bca0-28ee8dac587d)

@@ -17,36 +17,88 @@ interface PlaylistCategory {
   name: string;
 }
 
-const PlaylistSelectorAdvanced: React.FC = () => {
+interface PlaylistSelectorAdvancedProps {
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  setError: React.Dispatch<React.SetStateAction<string | null>>;
+}
+
+const PlaylistSelectorAdvanced: React.FC<PlaylistSelectorAdvancedProps> = (
+  props: PlaylistSelectorAdvancedProps
+) => {
   const [categories, setCategories] = useState<PlaylistCategory[]>([]);
 
   const getFeaturedPlaylists = async () => {
-    const token = getToken();
-    const response = await fetch(
-      `https://api.spotify.com/v1/browse/featured-playlists`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    try {
+      props.setLoading(false);
+      props.setError(null);
+      const token = getToken();
+      const response = await fetch(
+        `https://api.spotify.com/v1/browse/featured-playlists`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch featured playlists");
       }
-    );
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch featured playlists");
+      const featuredPlaylists = await response.json();
+      return featuredPlaylists;
+    } catch (err) {
+      if (err instanceof Error) {
+        props.setError(err.message);
+      } else {
+        props.setError("An unexpected error occurred");
+      }
+    } finally {
+      props.setLoading(false);
     }
-
-    const featuredPlaylists = await response.json();
-    return featuredPlaylists;
   };
 
-  const getLanguagePopularPlaylists = () => {
-    const data = ["pippo", "pluto", "paperino"];
-    const divs: any = [];
+  const getPlaylistCategories = async () => {
+    try {
+      props.setLoading(false);
+      props.setError(null);
 
-    data.forEach((element) => {
-      divs.push(<div key={element}>{element}</div>);
-    });
-    return divs;
+      const token = getToken();
+      const response = await fetch(
+        `https://api.spotify.com/v1/browse/categories`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch playlist categories");
+      }
+
+      const data = await response.json();
+      console.log(JSON.stringify(data, null, 2));
+
+      const tempCategories: PlaylistCategory[] = data.categories.items.map(
+        (oneItem: any) => ({
+          fullDetailsUrl: oneItem.href,
+          firstIconUrl: oneItem.icons?.[0]?.url,
+          id: oneItem.id,
+          name: oneItem.name,
+        })
+      );
+
+      setCategories(tempCategories);
+    } catch (err) {
+      if (err instanceof Error) {
+        props.setError(err.message);
+      } else {
+        props.setError("An unexpected error occurred");
+      }
+    } finally {
+      props.setLoading(false);
+    }
   };
 
   const getCategoriesGridCells = () => {
@@ -72,36 +124,6 @@ const PlaylistSelectorAdvanced: React.FC = () => {
       );
     });
     return divs;
-  };
-
-  const getPlaylistCategories = async () => {
-    const token = getToken();
-    const response = await fetch(
-      `https://api.spotify.com/v1/browse/categories`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch playlist categories");
-    }
-
-    const data = await response.json();
-    console.log(JSON.stringify(data, null, 2));
-
-    const tempCategories: PlaylistCategory[] = data.categories.items.map(
-      (oneItem: any) => ({
-        fullDetailsUrl: oneItem.href,
-        firstIconUrl: oneItem.icons?.[0]?.url,
-        id: oneItem.id,
-        name: oneItem.name,
-      })
-    );
-
-    setCategories(tempCategories);
   };
 
   useEffect(() => {
