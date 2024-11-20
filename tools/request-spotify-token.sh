@@ -18,5 +18,11 @@ SPOTIFY_TOKEN=$(echo "$SPOTIFY_RESPONSE" | jq -r ".access_token")
 #       -H "Authorization: Bearer $SPOTIFY_TOKEN"
 
 # Categories:
-curl -X GET "https://api.spotify.com/v1/browse/categories?limit=50" \
+# curl -X GET "https://api.spotify.com/v1/browse/categories?limit=50" \
+#       -H "Authorization: Bearer $SPOTIFY_TOKEN"
+
+# Playlists in a category:
+categoryID="0JQ5DAqbMKFIRybaNTYXXy"
+curl -X GET "https://api.spotify.com/v1/browse/categories/$categoryID/playlists" \
       -H "Authorization: Bearer $SPOTIFY_TOKEN"
+
