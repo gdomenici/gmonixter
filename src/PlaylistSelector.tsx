@@ -3,6 +3,14 @@ import Song from "./components/types/Song";
 import { getToken } from "./components/Utils";
 import Loading from "./components/ui/Loading";
 import ErrorUI from "./components/ui/ErrorUI";
+import {
+  Tabs,
+  TabsHeader,
+  TabsBody,
+  Tab,
+  TabPanel,
+} from "@material-tailwind/react";
+import PlaylistSelectorAdvanced from "./PlaylistSelectorAdvanced";
 
 interface PlaylistSelectorProps {
   setSongs: React.Dispatch<React.SetStateAction<Song[]>>;
@@ -45,7 +53,7 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
     return shuffled;
   };
 
-  const handleRetrievePlaylist = async () => {
+  const handleRetrieveSongs = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -110,19 +118,62 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
       <div>
         <img src="img/logo.png"></img>
       </div>
+
+      {/* <Tabs value="dashboard">
+        <TabsHeader>
+          <Tab key="categorySelector" value="categorySelector">
+          <div className="flex items-center gap-2">
+              <img src="img/playlist-svgrepo-com.svg"></img>
+              Pick a playlist from Spotify
+            </div>
+          </Tab>
+          <Tab key="enterPlaylistUrl" value="enterPlaylistUrl">
+          <div className="flex items-center gap-2">
+              <img src="img/playlist-url.svg"></img>
+              Enter a playist URL manually
+            </div>
+          </Tab>
+        </TabsHeader>
+        <TabsBody>
+          <TabPanel key="categorySelector" value="categorySelector">
+            <PlaylistSelectorAdvanced setLoading={setLoading} 
+              setError={setError}
+              setPlaylistUrl={setPlaylistUrl}
+              setPlaylistName={setPlaylistName} />
+          
+          </TabPanel>
+          <TabPanel key="enterPlaylistUrl" value="enterPlaylistUrl">
+              <input
+            type="text"
+            placeholder="Paste Spotify Playlist URL"
+            value={playlistUrl}
+            onChange={handlePlaylistUrlChange}
+            className="p-2 border rounded w-full max-w-md"
+          />
+          <button
+            onClick={handleRetrieveSongs}
+            className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
+          >
+            💃🏻 Get Songs 🕺🏻
+          </button>
+          </TabPanel>
+
+        </TabsBody>
+      </Tabs> */}
+
       <input
-        type="text"
-        placeholder="Paste Spotify Playlist URL"
-        value={playlistUrl}
-        onChange={handlePlaylistUrlChange}
-        className="p-2 border rounded w-full max-w-md"
-      />
-      <button
-        onClick={handleRetrievePlaylist}
-        className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
-      >
-        💃🏻 Get Songs 🕺🏻
-      </button>
+            type="text"
+            placeholder="Paste Spotify Playlist URL"
+            value={playlistUrl}
+            onChange={handlePlaylistUrlChange}
+            className="p-2 border rounded w-full max-w-md"
+          />
+          <button
+            onClick={handleRetrieveSongs}
+            className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
+          >
+            💃🏻 Get Songs 🕺🏻
+          </button>
 
       <Loading loading={loading} />
       <ErrorUI error={error} />

@@ -29,8 +29,8 @@ interface Playlist {
 interface PlaylistSelectorAdvancedProps {
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
-  setPlaylistUrl: React.Dispatch<React.SetStateAction<string | null>>;
-  setPlaylistTitle: React.Dispatch<React.SetStateAction<string | null>>;
+  setPlaylistUrl: React.Dispatch<React.SetStateAction<string>>;
+  setPlaylistName: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const PlaylistSelectorAdvanced: React.FC<PlaylistSelectorAdvancedProps> = (
@@ -121,7 +121,7 @@ const PlaylistSelectorAdvanced: React.FC<PlaylistSelectorAdvancedProps> = (
           <a
             href="#"
             onClick={() => {
-              props.setPlaylistTitle(onePlaylist.name);
+              props.setPlaylistName(onePlaylist.name);
               props.setPlaylistUrl(onePlaylist.url);
             }}
           >
