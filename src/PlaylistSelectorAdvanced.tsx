@@ -22,12 +22,15 @@ interface Playlist {
   name: string;
   firstIconUrl: string;
   description: string;
+  url: string;
   ownerName: string;
 }
 
 interface PlaylistSelectorAdvancedProps {
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
+  setPlaylistUrl: React.Dispatch<React.SetStateAction<string | null>>;
+  setPlaylistTitle: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 const PlaylistSelectorAdvanced: React.FC<PlaylistSelectorAdvancedProps> = (
@@ -118,7 +121,8 @@ const PlaylistSelectorAdvanced: React.FC<PlaylistSelectorAdvancedProps> = (
           <a
             href="#"
             onClick={() => {
-              //getPlaylistsInCategory(onePlaylist.id);
+              props.setPlaylistTitle(onePlaylist.name);
+              props.setPlaylistUrl(onePlaylist.url);
             }}
           >
             <Card className="mt-6 w-96">
@@ -129,7 +133,7 @@ const PlaylistSelectorAdvanced: React.FC<PlaylistSelectorAdvancedProps> = (
                 <Typography variant="h5" color="blue" className="mb-2">
                   {onePlaylist.name}
                 </Typography>
-                <Typography>{onePlaylist.id}</Typography>
+                <Typography>Start game with this playlist!</Typography>
               </CardBody>
               {/* <CardFooter className="pt-0">
           <Button>Read More</Button>
@@ -170,9 +174,11 @@ const PlaylistSelectorAdvanced: React.FC<PlaylistSelectorAdvancedProps> = (
           name: oneItem.name,
           firstIconUrl: oneItem.images?.[0]?.url,
           description: oneItem.description,
+          url: oneItem.external_urls?.spotify,
           ownerName: oneItem.owner?.displayName ?? "",
         })
       );
+      setCategories([]);
       setPlaylists(tempPlaylists);
     } catch (err) {
       if (err instanceof Error) {
@@ -185,6 +191,8 @@ const PlaylistSelectorAdvanced: React.FC<PlaylistSelectorAdvancedProps> = (
     }
   };
 
+  // setPlaylists([]);
+  // setCategories([]);
   useEffect(() => {
     getCategories();
   }, []);
@@ -193,6 +201,7 @@ const PlaylistSelectorAdvanced: React.FC<PlaylistSelectorAdvancedProps> = (
     <>
       <div className="grid grid-cols-2 gap-2">
         {categories && getCategoriesGridCells()}
+        {playlists && getPlaylistsGridCells()}
       </div>
     </>
   );
