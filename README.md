@@ -13,6 +13,7 @@
 
 # TODO
 
+- Address https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api
 - Continue playlists gallery
 - MRU of recently used playlists
 - Allow more than 100 songs

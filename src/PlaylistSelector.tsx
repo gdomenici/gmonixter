@@ -3,14 +3,14 @@ import Song from "./components/types/Song";
 import { getToken } from "./components/Utils";
 import Loading from "./components/ui/Loading";
 import ErrorUI from "./components/ui/ErrorUI";
-import {
-  Tabs,
-  TabsHeader,
-  TabsBody,
-  Tab,
-  TabPanel,
-} from "@material-tailwind/react";
-import PlaylistSelectorAdvanced from "./PlaylistSelectorAdvanced";
+// import {
+//   Tabs,
+//   TabsHeader,
+//   TabsBody,
+//   Tab,
+//   TabPanel,
+// } from "@material-tailwind/react";
+// import PlaylistSelectorAdvanced from "./PlaylistSelectorAdvanced";
 
 interface PlaylistSelectorProps {
   setSongs: React.Dispatch<React.SetStateAction<Song[]>>;
@@ -162,18 +162,18 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
       </Tabs> */}
 
       <input
-            type="text"
-            placeholder="Paste Spotify Playlist URL"
-            value={playlistUrl}
-            onChange={handlePlaylistUrlChange}
-            className="p-2 border rounded w-full max-w-md"
-          />
-          <button
-            onClick={handleRetrieveSongs}
-            className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
-          >
-            💃🏻 Get Songs 🕺🏻
-          </button>
+        type="text"
+        placeholder="Paste Spotify Playlist URL"
+        value={playlistUrl}
+        onChange={handlePlaylistUrlChange}
+        className="p-2 border rounded w-full max-w-md"
+      />
+      <button
+        onClick={handleRetrieveSongs}
+        className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
+      >
+        💃🏻 Get Songs 🕺🏻
+      </button>
 
       <Loading loading={loading} />
       <ErrorUI error={error} />
