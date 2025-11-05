@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 
 import PlaylistSelector from "./PlaylistSelector";
 import Song from "./components/types/Song";
-import { getToken } from "./components/Utils";
 import Loading from "./components/ui/Loading";
 import ErrorUI from "./components/ui/ErrorUI";
 
@@ -19,14 +18,6 @@ interface Release {
   mediaFormat: string;
   artistCredit: string;
 }
-
-const tokenHasExpired = () => {
-  const expiration = localStorage.getItem("expires");
-  if (!expiration || new Date() > new Date(expiration)) {
-    return true;
-  }
-  return false;
-};
 
 const SpotifyPlaylistCards: React.FC = () => {
   const [songs, setSongs] = useState<Song[]>([]);
@@ -109,11 +100,6 @@ const SpotifyPlaylistCards: React.FC = () => {
     setReleases([]);
   };
 
-  const handleAuthentication = () => {
-    window.location.href = "authorize.html";
-    return <></>;
-  };
-
   const renderReleasesRows = () => {
     const rows: any = [];
     releases.forEach((oneRelease: Release) => {
@@ -145,22 +131,6 @@ const SpotifyPlaylistCards: React.FC = () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
   }, [songs.length]);
-
-  // The user doesn't have a valid token
-  if (isNewGame && (!getToken() || tokenHasExpired())) {
-    return (
-      <div className="flex flex-col items-center">
-        <div className="mb-4">
-          <button
-            onClick={handleAuthentication}
-            className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-between"
-          >
-            <span>Click here to authorize with Spotify...</span>
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // The user does have a valid token - new game started
   if (isNewGame) {

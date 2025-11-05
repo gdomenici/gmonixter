@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import Song from "./components/types/Song";
-import { getToken } from "./components/Utils";
 import Loading from "./components/ui/Loading";
 import ErrorUI from "./components/ui/ErrorUI";
 // import {
@@ -35,12 +34,9 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
     setPlaylistUrl(e.target.value);
   };
 
-  const extractPlaylistId = (url: string): string => {
-    // Remove any query parameters
-    const baseUrl = url.split("?")[0];
-    // Split by '/' and get the playlist ID
-    const parts = baseUrl.split("/");
-    return parts[4] || "";
+  const extractYoutubePlaylistId = (url: string): string => {
+    const urlParams = new URLSearchParams(url.split('?')[1]);
+    return urlParams.get('list') || '';
   };
 
   // Fisher-Yates shuffle algorithm
@@ -58,17 +54,17 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
       setLoading(true);
       setError(null);
 
-      const playlistId = extractPlaylistId(playlistUrl);
+      const playlistId = extractYoutubePlaylistId(playlistUrl);
       if (!playlistId) {
-        throw new Error("Invalid playlist URL");
+        throw new Error("Invalid playlist URL -- missing playlist ID (list=...)");
       }
 
-      const token = getToken();
+      // const token = getToken();
       const response = await fetch(
         `https://api.spotify.com/v1/playlists/${playlistId}`,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            // Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -80,6 +76,7 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
       const playlist = await response.json();
 
       // Filter out songs without preview URLs and map to our Song interface
+      // TODO: Figure out how to get year and artist from the YouTube API or from gmonixter-backend
       const validSongs = playlist.tracks.items
         .filter((item: any) => item.track && item.track.preview_url)
         .map((item: any) => ({
@@ -163,7 +160,7 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
 
       <input
         type="text"
-        placeholder="Paste Spotify Playlist URL"
+        placeholder="Paste YouTube Playlist URL"
         value={playlistUrl}
         onChange={handlePlaylistUrlChange}
         className="p-2 border rounded w-full max-w-md"
