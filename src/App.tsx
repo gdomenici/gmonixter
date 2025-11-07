@@ -20,7 +20,7 @@ interface Release {
   artistCredit: string;
 }
 
-const YouTubePlaylistCards: React.FC = () => {
+const App: React.FC = () => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
@@ -32,6 +32,98 @@ const YouTubePlaylistCards: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastVideoIdsCountRef = useRef<number>(0);
+
+  const getMetadataForSong = async (currentSong: Song): Promise<Song | null> => {
+    const rawYouTubeTitle = currentSong.rawYouTubeTitle;
+    let artist: string | null = null;
+    let title: string;
+    let rest: string;
+
+    if (rawYouTubeTitle.includes(" - ")) {
+      [artist, rest] = rawYouTubeTitle.split(" - ", 2);
+    } else if (rawYouTubeTitle.includes(" | ")) {
+      [artist, rest] = rawYouTubeTitle.split(" | ", 2);
+    } else if (rawYouTubeTitle.includes(": ")) {
+      [artist, rest] = rawYouTubeTitle.split(": ", 2);
+    } else {
+      rest = rawYouTubeTitle;
+    }
+
+    title = rest.split(" (")[0].split(" [")[0].split(" ft")[0].split(" (feat")[0].split(" FEAT.")[0].replace(/"/g, '').replace(/'/g, '');
+    if (!title.trim()) return null;
+
+    try {
+      const query = artist ? `"${title}" AND artist:"${artist}"` : `"${title}"`;
+      const params = new URLSearchParams({ query, fmt: "json", limit: "10" });
+      const response = await fetch(`https://musicbrainz.org/ws/2/release?${params}`);
+      const data = await response.json();
+      
+      if (!data.releases || data.releases.length === 0) return null;
+
+      const release = data.releases[0];
+      const releaseDate = release.date || release["release-events"]?.[0]?.date;
+      
+      return {
+        ...currentSong,
+        title: release.title || title,
+        year: releaseDate ? parseInt(releaseDate.split('-')[0]) : undefined,
+        artist: release["artist-credit"]?.[0]?.name || artist || undefined,
+        isReadyForPlayback: true
+      };
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const pollDownloadState = async (playlistId: string, server: string) => {
+    const url = `${server}/playlist-download-state?playlist_id=${playlistId}`;
+    
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.track_index && data.total_tracks && data.video_ids) {
+        if (data.video_ids.length > lastVideoIdsCountRef.current) {
+          const newVideoId = data.video_ids[data.video_ids.length - 1];
+          
+          setSongs(prevSongs => {
+            const targetSong = prevSongs.find(song => song.videoId === newVideoId);
+            if (targetSong) {
+              getMetadataForSong(targetSong).then(songWithMetadata => {
+                setSongs(currentSongs => {
+                  if (songWithMetadata) {
+                    return currentSongs.map(song => song.videoId === newVideoId ? songWithMetadata : song);
+                  } else {
+                    return currentSongs.filter(song => song.videoId !== newVideoId);
+                  }
+                });
+              });
+            }
+            return prevSongs;
+          });
+          
+          lastVideoIdsCountRef.current = data.video_ids.length;
+        }
+        
+        if (data.video_ids.length === data.total_tracks && pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
+      }
+    } catch (error) {
+      console.error('Poll error:', error);
+    }
+  };
+
+  const handleStartPolling = (playlistId: string, server: string, playlistUrl: string) => {
+    lastVideoIdsCountRef.current = 0;
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
+    pollIntervalRef.current = setInterval(() => pollDownloadState(playlistId, server), 1000);
+  };
 
   const startPlayback = async (videoId: string) => {
     if (!videoRef.current) return;
@@ -176,10 +268,12 @@ const YouTubePlaylistCards: React.FC = () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
       }
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
     };
   }, []);
 
-  // The user does have a valid token - new game started
   if (isNewGame) {
     return (
       <PlaylistSelector
@@ -189,6 +283,7 @@ const YouTubePlaylistCards: React.FC = () => {
         setIsNewGame={setIsNewGame}
         setCurrentIndex={setCurrentIndex}
         setIsInfoVisible={setIsInfoVisible}
+        onStartPolling={handleStartPolling}
       />
     );
   }
@@ -315,4 +410,4 @@ const YouTubePlaylistCards: React.FC = () => {
   );
 };
 
-export default YouTubePlaylistCards;
+export default App;

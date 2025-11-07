@@ -2,14 +2,6 @@ import React, { useState, useEffect } from "react";
 import Song from "./components/types/Song";
 import Loading from "./components/ui/Loading";
 import ErrorUI from "./components/ui/ErrorUI";
-// import {
-//   Tabs,
-//   TabsHeader,
-//   TabsBody,
-//   Tab,
-//   TabPanel,
-// } from "@material-tailwind/react";
-// import PlaylistSelectorAdvanced from "./PlaylistSelectorAdvanced";
 
 interface PlaylistSelectorProps {
   setSongs: React.Dispatch<React.SetStateAction<Song[]>>;
@@ -18,6 +10,7 @@ interface PlaylistSelectorProps {
   setIsNewGame: React.Dispatch<React.SetStateAction<boolean>>;
   setCurrentIndex: React.Dispatch<React.SetStateAction<number>>;
   setIsInfoVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  onStartPolling: (playlistId: string, server: string, playlistUrl: string) => void;
 }
 
 const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
@@ -27,15 +20,13 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
   setIsNewGame,
   setCurrentIndex,
   setIsInfoVisible,
+  onStartPolling,
 }) => {
   const [playlistUrl, setPlaylistUrl] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [server, setServer] = useState<string>("http://localhost:3000");
   const [showServerSelect, setShowServerSelect] = useState<boolean>(false);
-  const [validSongs, setValidSongs] = useState<Song[]>([]);
-  const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
-  const [lastVideoIdsCount, setLastVideoIdsCount] = useState<number>(0);
 
   const handlePlaylistUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPlaylistUrl(e.target.value);
@@ -44,149 +35,6 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
   const extractYoutubePlaylistId = (url: string): string => {
     const urlParams = new URLSearchParams(url.split('?')[1]);
     return urlParams.get('list') || '';
-  };
-
-  const getMetadataForSong = async (currentSong: Song): Promise<Song | null> => {
-    const rawYouTubeTitle = currentSong.rawYouTubeTitle;
-    let artist: string | null = null;
-    let title: string;
-    let rest: string;
-
-    // Parse YouTube title to extract artist and title
-    if (rawYouTubeTitle.includes(" - ")) {
-      [artist, rest] = rawYouTubeTitle.split(" - ", 2);
-    } else if (rawYouTubeTitle.includes(" | ")) {
-      [artist, rest] = rawYouTubeTitle.split(" | ", 2);
-    } else if (rawYouTubeTitle.includes(": ")) {
-      [artist, rest] = rawYouTubeTitle.split(": ", 2);
-    } else {
-      rest = rawYouTubeTitle;
-    }
-
-    // Clean up title
-    title = rest.split(" (")[0];
-    title = title.split(" [")[0];
-    title = title.split(" ft")[0];
-    title = title.split(" (feat")[0];
-    title = title.split(" FEAT.")[0];
-    title = title.replace(/"/g, '').replace(/'/g, '');
-
-    if (!title.trim()) return null;
-
-    try {
-      const query = artist ? `"${title}" AND artist:"${artist}"` : `"${title}"`;
-      const params = new URLSearchParams({
-        query,
-        fmt: "json",
-        limit: "10"
-      });
-      
-      const response = await fetch(`https://musicbrainz.org/ws/2/release?${params}`);
-      const data = await response.json();
-      
-      if (!data.releases || data.releases.length === 0) {
-        console.log('No MusicBrainz results for:', rawYouTubeTitle);
-        return null;
-      }
-
-      const release = data.releases[0];
-      const releaseDate = release.date || release["release-events"]?.[0]?.date;
-      
-      return {
-        ...currentSong,
-        title: release.title || title,
-        year: releaseDate ? parseInt(releaseDate.split('-')[0]) : undefined,
-        artist: release["artist-credit"]?.[0]?.name || artist || undefined,
-        isReadyForPlayback: true
-      };
-    } catch (error) {
-      console.error('MusicBrainz lookup error:', error);
-      return null;
-    }
-  };
-
-  const getPlaylistItems = async () => {
-    const url = `${server}/playlist-items?playlist_url=${encodeURIComponent(playlistUrl)}`;
-    
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data.error) {
-        setError(data.error);
-      } else {
-        const songs: Song[] = data.video_items.map((item: any) => ({
-          rawYouTubeTitle: item.title,
-          videoId: item.id,
-          title: undefined,
-          year: undefined,
-          artist: undefined,
-          bestThumbnailUrl: item.thumbnails.reduce((best: any, current: any) => 
-            (current.height * current.width) > (best.height * best.width) ? current : best
-          ).url,
-          isReadyForPlayback: false
-        }));
-        setValidSongs(songs);
-      }
-    } catch (error) {
-      console.error('Error fetching playlist items:', error);
-      setError('Failed to fetch playlist items');
-    }
-  };
-
-  const pollDownloadState = async (playlistId: string) => {
-    const url = `${server}/playlist-download-state?playlist_id=${playlistId}`;
-    
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (data.track_index && data.total_tracks) {
-        if (data.video_ids && data.video_ids.length > lastVideoIdsCount) {
-          const newVideoId = data.video_ids[data.video_ids.length - 1];
-          
-          setValidSongs(async prevSongs => {
-            const targetSong = prevSongs.find(song => song.videoId === newVideoId);
-            if (targetSong) {
-              const songWithMetadata = await getMetadataForSong(targetSong);
-              let updatedSongs;
-              if (songWithMetadata) {
-                // Update song array with lookup result
-                updatedSongs = prevSongs.map(song => song.videoId === newVideoId ? songWithMetadata : song);
-              } else {
-                // Remove song if lookup failed
-                updatedSongs = prevSongs.filter(song => song.videoId !== newVideoId);
-              }
-              
-              // Check if at least one song is ready for playback
-              if (updatedSongs.some(song => song.isReadyForPlayback)) {
-                setSongs(updatedSongs);
-                setPlaylistName('YouTube Playlist');
-                setParentPlaylistUrl(playlistUrl);
-                setIsNewGame(false);
-                setCurrentIndex(0);
-                setIsInfoVisible(false);
-              }
-              
-              return updatedSongs;
-            }
-            return prevSongs;
-          });
-          
-          setLastVideoIdsCount(data.video_ids.length);
-        }
-        
-        // Stop polling when all tracks are downloaded
-        if (data.video_ids.length === data.total_tracks && pollInterval) {
-          clearInterval(pollInterval);
-          setPollInterval(null);
-          setLoading(false);
-        }
-      } else {
-        setError('Invalid download state response');
-      }
-    } catch (error) {
-      console.error('Poll error:', error);
-    }
   };
 
   const handleRetrieveSongs = async () => {
@@ -199,15 +47,42 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
         throw new Error("Invalid playlist URL -- missing playlist ID (list=...)");
       }
 
-      // Kickstart video content download. No awaiting response here.
-      fetch(
-        `${server}/playlist-download?playlist_url=${encodeURIComponent(playlistUrl)}`
-      );
+      // Kickstart video content download
+      fetch(`${server}/playlist-download?playlist_url=${encodeURIComponent(playlistUrl)}`);
 
-      // Get playlist items and start polling immediately
-      getPlaylistItems();
-      const interval = setInterval(() => pollDownloadState(playlistId), 1000);
-      setPollInterval(interval);
+      // Get playlist items
+      const url = `${server}/playlist-items?playlist_url=${encodeURIComponent(playlistUrl)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.error) {
+        setError(data.error);
+        setLoading(false);
+        return;
+      }
+
+      const songs: Song[] = data.video_items.map((item: any) => ({
+        rawYouTubeTitle: item.title,
+        videoId: item.id,
+        title: undefined,
+        year: undefined,
+        artist: undefined,
+        bestThumbnailUrl: item.thumbnails.reduce((best: any, current: any) => 
+          (current.height * current.width) > (best.height * best.width) ? current : best
+        ).url,
+        isReadyForPlayback: false
+      }));
+      
+      setSongs(songs);
+      setPlaylistName('YouTube Playlist');
+      setParentPlaylistUrl(playlistUrl);
+      setIsNewGame(false);
+      setCurrentIndex(0);
+      setIsInfoVisible(false);
+      
+      // Start polling in parent
+      onStartPolling(playlistId, server, playlistUrl);
+      setLoading(false);
 
     } catch (err) {
       if (err instanceof Error) {
@@ -227,13 +102,8 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
     };
 
     window.addEventListener('keydown', handleKeyPress);
-    return () => {
-      window.removeEventListener('keydown', handleKeyPress);
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
-    };
-  }, [showServerSelect, pollInterval]);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [showServerSelect]);
 
   return (
     <div className="mb-4">
@@ -254,48 +124,6 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
           </select>
         </div>
       )}
-
-      {/* <Tabs value="dashboard">
-        <TabsHeader>
-          <Tab key="categorySelector" value="categorySelector">
-          <div className="flex items-center gap-2">
-              <img src="img/playlist-svgrepo-com.svg"></img>
-              Pick a playlist from Spotify
-            </div>
-          </Tab>
-          <Tab key="enterPlaylistUrl" value="enterPlaylistUrl">
-          <div className="flex items-center gap-2">
-              <img src="img/playlist-url.svg"></img>
-              Enter a playist URL manually
-            </div>
-          </Tab>
-        </TabsHeader>
-        <TabsBody>
-          <TabPanel key="categorySelector" value="categorySelector">
-            <PlaylistSelectorAdvanced setLoading={setLoading} 
-              setError={setError}
-              setPlaylistUrl={setPlaylistUrl}
-              setPlaylistName={setPlaylistName} />
-          
-          </TabPanel>
-          <TabPanel key="enterPlaylistUrl" value="enterPlaylistUrl">
-              <input
-            type="text"
-            placeholder="Paste Spotify Playlist URL"
-            value={playlistUrl}
-            onChange={handlePlaylistUrlChange}
-            className="p-2 border rounded w-full max-w-md"
-          />
-          <button
-            onClick={handleRetrieveSongs}
-            className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
-          >
-            💃🏻 Get Songs 🕺🏻
-          </button>
-          </TabPanel>
-
-        </TabsBody>
-      </Tabs> */}
 
       <input
         type="text"
