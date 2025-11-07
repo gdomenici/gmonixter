@@ -46,19 +46,63 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
     return urlParams.get('list') || '';
   };
 
-  // Fisher-Yates shuffle algorithm
-  const shuffleArray = <T,>(array: T[]): T[] => {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  };
+  const getMetadataForSong = async (currentSong: Song): Promise<Song | null> => {
+    const rawYouTubeTitle = currentSong.rawYouTubeTitle;
+    let artist: string | null = null;
+    let title: string;
+    let rest: string;
 
-  const musicBrainzLookup = async (currentSong: Song) => {
-    // Placeholder function - will be implemented later
-    console.log('MusicBrainz lookup for:', currentSong.rawYouTubeTitle);
+    // Parse YouTube title to extract artist and title
+    if (rawYouTubeTitle.includes(" - ")) {
+      [artist, rest] = rawYouTubeTitle.split(" - ", 2);
+    } else if (rawYouTubeTitle.includes(" | ")) {
+      [artist, rest] = rawYouTubeTitle.split(" | ", 2);
+    } else if (rawYouTubeTitle.includes(": ")) {
+      [artist, rest] = rawYouTubeTitle.split(": ", 2);
+    } else {
+      rest = rawYouTubeTitle;
+    }
+
+    // Clean up title
+    title = rest.split(" (")[0];
+    title = title.split(" [")[0];
+    title = title.split(" ft")[0];
+    title = title.split(" (feat")[0];
+    title = title.split(" FEAT.")[0];
+    title = title.replace(/"/g, '').replace(/'/g, '');
+
+    if (!title.trim()) return null;
+
+    try {
+      const query = artist ? `"${title}" AND artist:"${artist}"` : `"${title}"`;
+      const params = new URLSearchParams({
+        query,
+        fmt: "json",
+        limit: "10"
+      });
+      
+      const response = await fetch(`https://musicbrainz.org/ws/2/release?${params}`);
+      const data = await response.json();
+      
+      if (!data.releases || data.releases.length === 0) {
+        console.log('No MusicBrainz results for:', rawYouTubeTitle);
+        return null;
+      }
+
+      const release = data.releases[0];
+      const releaseDate = release.date || release["release-events"]?.[0]?.date;
+      
+      return {
+        ...currentSong,
+        title: release.title || title,
+        year: releaseDate ? parseInt(releaseDate.split('-')[0]) : undefined,
+        artist: release["artist-credit"]?.[0]?.name || artist || undefined,
+        isReadyForPlayback: true
+      };
+    } catch (error) {
+      console.error('MusicBrainz lookup error:', error);
+      return null;
+    }
   };
 
   const getPlaylistItems = async () => {
@@ -100,26 +144,32 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
         if (data.video_ids && data.video_ids.length > lastVideoIdsCount) {
           const newVideoId = data.video_ids[data.video_ids.length - 1];
           
-          setValidSongs(prevSongs => {
-            const updatedSongs = prevSongs.map(song => {
-              if (song.videoId === newVideoId) {
-                musicBrainzLookup(song);
-                return { ...song, isReadyForPlayback: true };
+          setValidSongs(async prevSongs => {
+            const targetSong = prevSongs.find(song => song.videoId === newVideoId);
+            if (targetSong) {
+              const songWithMetadata = await getMetadataForSong(targetSong);
+              let updatedSongs;
+              if (songWithMetadata) {
+                // Update song array with lookup result
+                updatedSongs = prevSongs.map(song => song.videoId === newVideoId ? songWithMetadata : song);
+              } else {
+                // Remove song if lookup failed
+                updatedSongs = prevSongs.filter(song => song.videoId !== newVideoId);
               }
-              return song;
-            });
-            
-            // Check if at least one song is ready for playback
-            if (updatedSongs.some(song => song.isReadyForPlayback)) {
-              setSongs(updatedSongs);
-              setPlaylistName('YouTube Playlist');
-              setParentPlaylistUrl(playlistUrl);
-              setIsNewGame(false);
-              setCurrentIndex(0);
-              setIsInfoVisible(false);
+              
+              // Check if at least one song is ready for playback
+              if (updatedSongs.some(song => song.isReadyForPlayback)) {
+                setSongs(updatedSongs);
+                setPlaylistName('YouTube Playlist');
+                setParentPlaylistUrl(playlistUrl);
+                setIsNewGame(false);
+                setCurrentIndex(0);
+                setIsInfoVisible(false);
+              }
+              
+              return updatedSongs;
             }
-            
-            return updatedSongs;
+            return prevSongs;
           });
           
           setLastVideoIdsCount(data.video_ids.length);
