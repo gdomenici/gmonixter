@@ -1,7 +1,11 @@
 export default interface Song {
-  title: string;
-  year: number;
-  artist: string;
-  previewUrl: string;
-  albumCoverArtUrl: string;
+  rawYouTubeTitle: string;
+  videoId: string;
+  title?: string;
+  year?: number;
+  artist?: string;
+  bestThumbnailUrl: string;
+  isReadyForPlayback: boolean;
+  previewUrl?: string;
+  albumCoverArtUrl?: string;
 }

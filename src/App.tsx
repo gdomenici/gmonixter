@@ -19,7 +19,7 @@ interface Release {
   artistCredit: string;
 }
 
-const SpotifyPlaylistCards: React.FC = () => {
+const YouTubePlaylistCards: React.FC = () => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
@@ -28,6 +28,11 @@ const SpotifyPlaylistCards: React.FC = () => {
   const [playlistName, setPlaylistName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const startPlayback = (videoId: string) => {
+    console.log('Starting playback for video:', videoId);
+    // Placeholder function - will be implemented later
+  };
 
   const handleLoadExtraReleases = async (title: string, artist: string) => {
     try {
@@ -152,7 +157,17 @@ const SpotifyPlaylistCards: React.FC = () => {
         <div className="flex flex-col items-center bg-white shadow-md rounded-md p-4 w-full max-w-md">
           <h1 className="text-blue-500 text-lg">Playlist: {playlistName}</h1>
           <div className="py-4 px-8 hover:bg-blue-500">
-            <audio src={songs[currentIndex].previewUrl} controls></audio>
+            {songs[currentIndex].isReadyForPlayback ? (
+              <div onClick={() => startPlayback(songs[currentIndex].videoId)} className="cursor-pointer">
+                <div className="bg-green-500 text-white p-4 rounded text-center">
+                  ▶️ Play Video
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-300 text-gray-600 p-4 rounded text-center">
+                Please wait... preparing video
+              </div>
+            )}
           </div>
 
           <button
@@ -170,28 +185,32 @@ const SpotifyPlaylistCards: React.FC = () => {
           {isInfoVisible && (
             <div className="w-full mt-2 p-2">
               <h3 className="text-lg font-medium">
-                {songs[currentIndex].title}
+                {songs[currentIndex].title || songs[currentIndex].rawYouTubeTitle}
               </h3>
               <p className="text-gray-500">
-                {songs[currentIndex].year} - {songs[currentIndex].artist}
+                {songs[currentIndex].year && songs[currentIndex].artist 
+                  ? `${songs[currentIndex].year} - ${songs[currentIndex].artist}`
+                  : 'Metadata loading...'}
               </p>
 
-              {songs[currentIndex].albumCoverArtUrl && (
-                <img src={songs[currentIndex].albumCoverArtUrl}></img>
+              {(songs[currentIndex].albumCoverArtUrl || songs[currentIndex].bestThumbnailUrl) && (
+                <img src={songs[currentIndex].albumCoverArtUrl || songs[currentIndex].bestThumbnailUrl}></img>
               )}
 
-              <a
-                href="#"
-                onClick={() =>
-                  handleLoadExtraReleases(
-                    songs[currentIndex].title,
-                    songs[currentIndex].artist
-                  )
-                }
-                className="text-gray-500"
-              >
-                Click to see other releases...
-              </a>
+              {songs[currentIndex].title && songs[currentIndex].artist && (
+                <a
+                  href="#"
+                  onClick={() =>
+                    handleLoadExtraReleases(
+                      songs[currentIndex].title!,
+                      songs[currentIndex].artist!
+                    )
+                  }
+                  className="text-gray-500"
+                >
+                  Click to see other releases...
+                </a>
+              )}
 
               {releases.length > 0 && (
                 <table>
@@ -247,4 +266,4 @@ const SpotifyPlaylistCards: React.FC = () => {
   );
 };
 
-export default SpotifyPlaylistCards;
+export default YouTubePlaylistCards;
