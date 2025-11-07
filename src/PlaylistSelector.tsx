@@ -176,7 +176,7 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
         }
         
         // Stop polling when all tracks are downloaded
-        if (data.track_index === data.total_tracks && pollInterval) {
+        if (data.video_ids.length === data.total_tracks && pollInterval) {
           clearInterval(pollInterval);
           setPollInterval(null);
           setLoading(false);
@@ -199,20 +199,13 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
         throw new Error("Invalid playlist URL -- missing playlist ID (list=...)");
       }
 
-      // BEGIN PLACEHOLDER - Kickstart video content download
-      const downloadResponse = await fetch(
+      // Kickstart video content download. No awaiting response here.
+      fetch(
         `${server}/playlist-download?playlist_url=${encodeURIComponent(playlistUrl)}`
       );
-      // END PLACEHOLDER
 
-      if (!downloadResponse.ok) {
-        throw new Error("Failed to start playlist download");
-      }
-
-      // Get playlist items
-      await getPlaylistItems();
-
-      // Start polling for download state
+      // Get playlist items and start polling immediately
+      getPlaylistItems();
       const interval = setInterval(() => pollDownloadState(playlistId), 1000);
       setPollInterval(interval);
 
