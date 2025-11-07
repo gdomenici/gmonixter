@@ -14,6 +14,7 @@ import ErrorUI from "./components/ui/ErrorUI";
 interface PlaylistSelectorProps {
   setSongs: React.Dispatch<React.SetStateAction<Song[]>>;
   setPlaylistName: React.Dispatch<React.SetStateAction<string>>;
+  setPlaylistUrl: React.Dispatch<React.SetStateAction<string>>;
   setIsNewGame: React.Dispatch<React.SetStateAction<boolean>>;
   setCurrentIndex: React.Dispatch<React.SetStateAction<number>>;
   setIsInfoVisible: React.Dispatch<React.SetStateAction<boolean>>;
@@ -22,6 +23,7 @@ interface PlaylistSelectorProps {
 const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
   setSongs,
   setPlaylistName,
+  setPlaylistUrl: setParentPlaylistUrl,
   setIsNewGame,
   setCurrentIndex,
   setIsInfoVisible,
@@ -111,6 +113,7 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
             if (updatedSongs.some(song => song.isReadyForPlayback)) {
               setSongs(updatedSongs);
               setPlaylistName('YouTube Playlist');
+              setParentPlaylistUrl(playlistUrl);
               setIsNewGame(false);
               setCurrentIndex(0);
               setIsInfoVisible(false);

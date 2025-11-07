@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import Hls from "hls.js";
 
 import PlaylistSelector from "./PlaylistSelector";
 import Song from "./components/types/Song";
@@ -26,12 +27,45 @@ const YouTubePlaylistCards: React.FC = () => {
   const [isInfoVisible, setIsInfoVisible] = useState<boolean>(false);
   const [isNewGame, setIsNewGame] = useState<boolean>(true);
   const [playlistName, setPlaylistName] = useState<string>("");
+  const [playlistUrl, setPlaylistUrl] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
 
-  const startPlayback = (videoId: string) => {
-    console.log('Starting playback for video:', videoId);
-    // Placeholder function - will be implemented later
+  const startPlayback = async (videoId: string) => {
+    if (!videoRef.current) return;
+    
+    const server = localStorage.getItem('selectedServer') || 'http://localhost:3000';
+    const url = `${server}/playlist-items?playlist_url=${encodeURIComponent(playlistUrl)}`;
+    
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch HLS playlist');
+      
+      const data = await response.json();
+      const hlsUrl = data.hlsUrl; // Assuming the API returns an hlsUrl field
+      
+      if (Hls.isSupported()) {
+        if (hlsRef.current) {
+          hlsRef.current.destroy();
+        }
+        
+        hlsRef.current = new Hls();
+        hlsRef.current.loadSource(hlsUrl);
+        hlsRef.current.attachMedia(videoRef.current);
+        
+        hlsRef.current.on(Hls.Events.MANIFEST_PARSED, () => {
+          videoRef.current?.play();
+        });
+      } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+        videoRef.current.src = hlsUrl;
+        videoRef.current.play();
+      }
+    } catch (err) {
+      console.error('Error starting playback:', err);
+      setError('Failed to start video playback');
+    }
   };
 
   const handleLoadExtraReleases = async (title: string, artist: string) => {
@@ -137,12 +171,21 @@ const YouTubePlaylistCards: React.FC = () => {
     };
   }, [songs.length]);
 
+  useEffect(() => {
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+      }
+    };
+  }, []);
+
   // The user does have a valid token - new game started
   if (isNewGame) {
     return (
       <PlaylistSelector
         setSongs={setSongs}
         setPlaylistName={setPlaylistName}
+        setPlaylistUrl={setPlaylistUrl}
         setIsNewGame={setIsNewGame}
         setCurrentIndex={setCurrentIndex}
         setIsInfoVisible={setIsInfoVisible}
@@ -156,10 +199,16 @@ const YouTubePlaylistCards: React.FC = () => {
       {songs.length > 0 && (
         <div className="flex flex-col items-center bg-white shadow-md rounded-md p-4 w-full max-w-md">
           <h1 className="text-blue-500 text-lg">Playlist: {playlistName}</h1>
-          <div className="py-4 px-8 hover:bg-blue-500">
+          <div className="py-4 px-8">
+            <video 
+              ref={videoRef}
+              controls
+              className="w-full max-w-md rounded"
+              style={{ display: songs[currentIndex].isReadyForPlayback ? 'block' : 'none' }}
+            />
             {songs[currentIndex].isReadyForPlayback ? (
-              <div onClick={() => startPlayback(songs[currentIndex].videoId)} className="cursor-pointer">
-                <div className="bg-green-500 text-white p-4 rounded text-center">
+              <div onClick={() => startPlayback(songs[currentIndex].videoId)} className="cursor-pointer mt-2">
+                <div className="bg-green-500 text-white p-4 rounded text-center hover:bg-green-600">
                   ▶️ Play Video
                 </div>
               </div>
