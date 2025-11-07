@@ -96,6 +96,9 @@ const App: React.FC = () => {
 
     // Always look at the very last video ID the server added
     const latestVideoID = data.video_ids[data.video_ids.length - 1];
+    console.log(`Looking for latest video ID ${latestVideoID} in songs array`);
+    console.log(`songs array contains:\n${JSON.stringify(songs, null, 2)}`);
+
     const songThatNeedsMetadata = songs.find(oneSong => oneSong.videoId === latestVideoID);
     if (!songThatNeedsMetadata) {
       throw new Error(`Song with video ID ${latestVideoID} not present in downloaded playlist items`);
