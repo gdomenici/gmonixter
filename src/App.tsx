@@ -23,11 +23,10 @@ interface Release {
 const App: React.FC = () => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
-  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [isInfoVisible, setIsInfoVisible] = useState<boolean>(false);
   const [isNewGame, setIsNewGame] = useState<boolean>(true);
   const [playlistName, setPlaylistName] = useState<string>("");
-  const [playlistUrl, setPlaylistUrl] = useState<string>("");
   const [playlistUrlInput, setPlaylistUrlInput] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -166,7 +165,6 @@ const App: React.FC = () => {
       
       setSongs(songs);
       setPlaylistName('YouTube Playlist');
-      setPlaylistUrl(playlistUrlInput);
       setIsNewGame(false);
       setCurrentIndex(0);
       setIsInfoVisible(false);
@@ -191,7 +189,7 @@ const App: React.FC = () => {
     if (!videoRef.current) return;
     
     const server = localStorage.getItem('selectedServer') || 'http://localhost:3000';
-    const url = `${server}/playlist-items?playlist_url=${encodeURIComponent(playlistUrl)}`;
+    const url = `${server}/hls-live?video_id=${videoId}`;
     
     try {
       const response = await fetch(url);
@@ -385,10 +383,16 @@ const App: React.FC = () => {
     );
   }
 
+  const indexOfFirstSongReadyForPlayback = songs.findIndex(oneSong => oneSong.isReadyForPlayback);
+  if (indexOfFirstSongReadyForPlayback >= 0) {
+    setCurrentIndex(indexOfFirstSongReadyForPlayback);
+  }
+
   // Main game logic UI
   return (
     <div className="flex flex-col items-center">
-      {songs.length > 0 && (
+      {currentIndex >= 0  && (
+        // only display this component if there is at least one song ready for playback
         <div className="flex flex-col items-center bg-white shadow-md rounded-md p-4 w-full max-w-md">
           <h1 className="text-blue-500 text-lg">Playlist: {playlistName}</h1>
           <div className="py-4 px-8">
