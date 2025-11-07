@@ -193,8 +193,8 @@ const YouTubePlaylistCards: React.FC = () => {
                   : 'Metadata loading...'}
               </p>
 
-              {(songs[currentIndex].albumCoverArtUrl || songs[currentIndex].bestThumbnailUrl) && (
-                <img src={songs[currentIndex].albumCoverArtUrl || songs[currentIndex].bestThumbnailUrl}></img>
+              {(songs[currentIndex].bestThumbnailUrl) && (
+                <img src={songs[currentIndex].bestThumbnailUrl}></img>
               )}
 
               {songs[currentIndex].title && songs[currentIndex].artist && (

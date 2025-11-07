@@ -6,6 +6,4 @@ export default interface Song {
   artist?: string;
   bestThumbnailUrl: string;
   isReadyForPlayback: boolean;
-  previewUrl?: string;
-  albumCoverArtUrl?: string;
 }
