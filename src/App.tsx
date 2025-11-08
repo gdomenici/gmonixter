@@ -21,9 +21,10 @@ interface Release {
 }
 
 const App: React.FC = () => {
+  const songsRef = useRef<Song[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
-  const [currentIndex, setCurrentIndex] = useState<number>(-1);
+  const [currentSongIndex, setCurrentSongIndex] = useState<number>(-1);
   const [isInfoVisible, setIsInfoVisible] = useState<boolean>(false);
   const [isNewGame, setIsNewGame] = useState<boolean>(true);
   const [playlistName, setPlaylistName] = useState<string>("");
@@ -35,50 +36,6 @@ const App: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  /**
-   * Cleans up the song title and artist from the raw YouTube title, and
-   * subsequently fetches metadata from MusicBrainz
-   * @param currentSong song to populate metadata for
-   */
-  const populateMetadataForSong = async (currentSong: Song) => {
-    const rawYouTubeTitle = currentSong.rawYouTubeTitle;
-    let artist: string | null = null;
-    let title: string;
-    let rest: string;
-
-    if (rawYouTubeTitle.includes(" - ")) {
-      [artist, rest] = rawYouTubeTitle.split(" - ", 2);
-    } else if (rawYouTubeTitle.includes(" | ")) {
-      [artist, rest] = rawYouTubeTitle.split(" | ", 2);
-    } else if (rawYouTubeTitle.includes(": ")) {
-      [artist, rest] = rawYouTubeTitle.split(": ", 2);
-    } else {
-      rest = rawYouTubeTitle;
-    }
-
-    title = rest.split(" (")[0].split(" [")[0].split(" ft")[0].split(" (feat")[0].split(" FEAT.")[0].replace(/"/g, '').replace(/'/g, '');
-    if (!title.trim()) {
-      throw new MetadataNotFoundError(`Metadata not found for ${rawYouTubeTitle}`);
-    };
-
-    const query = artist ? `"${title}" AND artist:"${artist}"` : `"${title}"`;
-    const params = new URLSearchParams({ query, fmt: "json", limit: "10" });
-    const response = await fetch(`https://musicbrainz.org/ws/2/release?${params}`);
-    const data = await response.json();
-    
-    if (!data.releases || data.releases.length === 0) {
-      throw new MetadataNotFoundError(`Metadata not found in MusicBrainz for ${rawYouTubeTitle}`);
-    }
-
-    const release = data.releases[0];
-    const releaseDate = release.date || release["release-events"]?.[0]?.date;
-    currentSong.title = release.title || title;
-    currentSong.year = releaseDate ? parseInt(releaseDate.split('-')[0]) : undefined;
-    currentSong.artist = release["artist-credit"]?.[0]?.name || artist || undefined;
-    currentSong.isReadyForPlayback = true;
-
-  };
 
   /**
    * Called periodically to poll the download state from the server
@@ -97,31 +54,23 @@ const App: React.FC = () => {
     // Always look at the very last video ID the server added
     const latestVideoID = data.video_ids[data.video_ids.length - 1];
     console.log(`Looking for latest video ID ${latestVideoID} in songs array`);
-    console.log(`songs array contains:\n${JSON.stringify(songs, null, 2)}`);
+    console.log(`songs array contains:\n${JSON.stringify(songsRef.current, null, 2)}`);
 
-    const songThatNeedsMetadata = songs.find(oneSong => oneSong.videoId === latestVideoID);
-    if (!songThatNeedsMetadata) {
+    const songToPopulate = songsRef.current.find(oneSong => oneSong.videoId === latestVideoID);
+    if (!songToPopulate) {
       throw new Error(`Song with video ID ${latestVideoID} not present in downloaded playlist items`);
     }
-    try {
-      populateMetadataForSong(songThatNeedsMetadata);
-    } catch (error) {
-      if (error instanceof MetadataNotFoundError) {
-        console.error(error);
-        // Remove songThatNeedsMetadata from the songs array, because we effectively
-        // don't "know" what it is, without having metadata
-        setSongs(currentSongs => currentSongs.filter(song => song.videoId !== latestVideoID));
-        return;
-      }
-    }   
-    
+    // Parses the raw title and retrieves metadata from MusicBrainz
+    songToPopulate.populateMetadata();
+    songToPopulate.isReadyForPlayback = true;
+
     // End condition: we downloaded metadata for all songs. No need to
     // poll anymore after that.
     if (data.video_ids.length === data.total_tracks && pollIntervalRef.current) {
       // Sanity check: see if all videos in the list really have metadata
-      const allHaveMetadata = songs.every(oneSong => oneSong.isReadyForPlayback);
-      if (!allHaveMetadata) {
-        throw new Error("Unexpected condition: not all songs have metadata")
+      const allAreReadyForPlayback = songs.every(oneSong => oneSong.isReadyForPlayback);
+      if (!allAreReadyForPlayback) {
+        throw new Error("Unexpected condition: not all songs have been marked as 'ready for playback'")
       }
 
       clearInterval(pollIntervalRef.current);
@@ -157,19 +106,21 @@ const App: React.FC = () => {
         return;
       }
 
-      const songs: Song[] = data.video_items.map((item: any) => ({
-        rawYouTubeTitle: item.title,
-        videoId: item.id,
-        bestThumbnailUrl: item.thumbnails.reduce((best: any, current: any) => 
+      const songs: Song[] = data.video_items.map((item: any) => {
+        const newSong: Song = new Song(item.id, item.title);
+        newSong.bestThumbnailUrl = item.thumbnails.reduce((best: any, current: any) => 
           (current.height * current.width) > (best.height * best.width) ? current : best
-        ).url,
-        isReadyForPlayback: false
-      }));
+        ).url;
+        return newSong;
+      });
       
+      console.log(`############ About to call setSongs with:\n${JSON.stringify(songs, null, 2)}`);
+
       setSongs(songs);
+      songsRef.current = songs;
       setPlaylistName('YouTube Playlist');
       setIsNewGame(false);
-      setCurrentIndex(0);
+      setCurrentSongIndex(0);
       setIsInfoVisible(false);
       
       if (pollIntervalRef.current) {
@@ -283,13 +234,13 @@ const App: React.FC = () => {
   };
 
   const handlePrevious = () => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : songs.length - 1));
+    setCurrentSongIndex((prev) => (prev > 0 ? prev - 1 : songs.length - 1));
     setIsInfoVisible(false);
     setReleases([]);
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev < songs.length - 1 ? prev + 1 : 0));
+    setCurrentSongIndex((prev) => (prev < songs.length - 1 ? prev + 1 : 0));
     setIsInfoVisible(false);
     setReleases([]);
   };
@@ -388,13 +339,13 @@ const App: React.FC = () => {
 
   const indexOfFirstSongReadyForPlayback = songs.findIndex(oneSong => oneSong.isReadyForPlayback);
   if (indexOfFirstSongReadyForPlayback >= 0) {
-    setCurrentIndex(indexOfFirstSongReadyForPlayback);
+    setCurrentSongIndex(indexOfFirstSongReadyForPlayback);
   }
 
   // Main game logic UI
   return (
     <div className="flex flex-col items-center">
-      {currentIndex >= 0  && (
+      {currentSongIndex >= 0  && (
         // only display this component if there is at least one song ready for playback
         <div className="flex flex-col items-center bg-white shadow-md rounded-md p-4 w-full max-w-md">
           <h1 className="text-blue-500 text-lg">Playlist: {playlistName}</h1>
@@ -403,10 +354,10 @@ const App: React.FC = () => {
               ref={videoRef}
               controls
               className="w-full max-w-md rounded"
-              style={{ display: songs[currentIndex].isReadyForPlayback ? 'block' : 'none' }}
+              style={{ display: songs[currentSongIndex].isReadyForPlayback ? 'block' : 'none' }}
             />
-            {songs[currentIndex].isReadyForPlayback ? (
-              <div onClick={() => startPlayback(songs[currentIndex].videoId)} className="cursor-pointer mt-2">
+            {songs[currentSongIndex].isReadyForPlayback ? (
+              <div onClick={() => startPlayback(songs[currentSongIndex].videoId)} className="cursor-pointer mt-2">
                 <div className="bg-green-500 text-white p-4 rounded text-center hover:bg-green-600">
                   ▶️ Play Video
                 </div>
@@ -433,25 +384,25 @@ const App: React.FC = () => {
           {isInfoVisible && (
             <div className="w-full mt-2 p-2">
               <h3 className="text-lg font-medium">
-                {songs[currentIndex].title || songs[currentIndex].rawYouTubeTitle}
+                {songs[currentSongIndex].title || songs[currentSongIndex].rawYouTubeTitle}
               </h3>
               <p className="text-gray-500">
-                {songs[currentIndex].year && songs[currentIndex].artist 
-                  ? `${songs[currentIndex].year} - ${songs[currentIndex].artist}`
+                {songs[currentSongIndex].year && songs[currentSongIndex].artist 
+                  ? `${songs[currentSongIndex].year} - ${songs[currentSongIndex].artist}`
                   : 'Metadata loading...'}
               </p>
 
-              {(songs[currentIndex].bestThumbnailUrl) && (
-                <img src={songs[currentIndex].bestThumbnailUrl}></img>
+              {(songs[currentSongIndex].bestThumbnailUrl) && (
+                <img src={songs[currentSongIndex].bestThumbnailUrl}></img>
               )}
 
-              {songs[currentIndex].title && songs[currentIndex].artist && (
+              {songs[currentSongIndex].title && songs[currentSongIndex].artist && (
                 <a
                   href="#"
                   onClick={() =>
                     handleLoadExtraReleases(
-                      songs[currentIndex].title!,
-                      songs[currentIndex].artist!
+                      songs[currentSongIndex].title!,
+                      songs[currentSongIndex].artist!
                     )
                   }
                   className="text-gray-500"
@@ -492,7 +443,7 @@ const App: React.FC = () => {
           </div>
 
           <div className="text-gray-400 text-sm mt-2">
-            Song {currentIndex + 1} of {songs.length}
+            Song {currentSongIndex + 1} of {songs.length}
           </div>
           <div className="w-full mt-2 p-2">
             <a
