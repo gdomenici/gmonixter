@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import Hls from "hls.js";
 
-import PlaylistSelector from "./PlaylistSelector";
 import Song from "./components/types/Song";
+import MetadataNotFoundError from "./components/types/MetadataNotFoundError";
 import Loading from "./components/ui/Loading";
 import ErrorUI from "./components/ui/ErrorUI";
 
@@ -21,115 +21,129 @@ interface Release {
 }
 
 const App: React.FC = () => {
+  const songsRef = useRef<Song[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
-  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [currentSongIndex, setCurrentSongIndex] = useState<number>(-1);
   const [isInfoVisible, setIsInfoVisible] = useState<boolean>(false);
   const [isNewGame, setIsNewGame] = useState<boolean>(true);
   const [playlistName, setPlaylistName] = useState<string>("");
-  const [playlistUrl, setPlaylistUrl] = useState<string>("");
+  const [playlistUrlInput, setPlaylistUrlInput] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [server, setServer] = useState<string>("http://localhost:3000");
+  const [showServerSelect, setShowServerSelect] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastVideoIdsCountRef = useRef<number>(0);
 
-  const getMetadataForSong = async (currentSong: Song): Promise<Song | null> => {
-    const rawYouTubeTitle = currentSong.rawYouTubeTitle;
-    let artist: string | null = null;
-    let title: string;
-    let rest: string;
-
-    if (rawYouTubeTitle.includes(" - ")) {
-      [artist, rest] = rawYouTubeTitle.split(" - ", 2);
-    } else if (rawYouTubeTitle.includes(" | ")) {
-      [artist, rest] = rawYouTubeTitle.split(" | ", 2);
-    } else if (rawYouTubeTitle.includes(": ")) {
-      [artist, rest] = rawYouTubeTitle.split(": ", 2);
-    } else {
-      rest = rawYouTubeTitle;
+  /**
+   * Called periodically to poll the download state from the server
+   * @param playlistId YouTube playlist ID
+   * @param server Server base URL
+   */
+  const pollDownloadState = async (playlistId: string, server: string) => {
+    const url = `${server}/playlist-download-state?playlist_id=${playlistId}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (!data.total_tracks || !data.video_ids || data.video_ids.length === 0) {
+      return;
     }
 
-    title = rest.split(" (")[0].split(" [")[0].split(" ft")[0].split(" (feat")[0].split(" FEAT.")[0].replace(/"/g, '').replace(/'/g, '');
-    if (!title.trim()) return null;
+    // Always look at the very last video ID the server added
+    const latestVideoID = data.video_ids[data.video_ids.length - 1];
+    console.log(`Looking for latest video ID ${latestVideoID} in songs array`);
+    console.log(`songs array contains:\n${JSON.stringify(songsRef.current, null, 2)}`);
 
-    try {
-      const query = artist ? `"${title}" AND artist:"${artist}"` : `"${title}"`;
-      const params = new URLSearchParams({ query, fmt: "json", limit: "10" });
-      const response = await fetch(`https://musicbrainz.org/ws/2/release?${params}`);
-      const data = await response.json();
-      
-      if (!data.releases || data.releases.length === 0) return null;
+    const songToPopulate = songsRef.current.find(oneSong => oneSong.videoId === latestVideoID);
+    if (!songToPopulate) {
+      throw new Error(`Song with video ID ${latestVideoID} not present in downloaded playlist items`);
+    }
+    // Parses the raw title and retrieves metadata from MusicBrainz
+    songToPopulate.populateMetadata();
+    songToPopulate.isReadyForPlayback = true;
 
-      const release = data.releases[0];
-      const releaseDate = release.date || release["release-events"]?.[0]?.date;
-      
-      return {
-        ...currentSong,
-        title: release.title || title,
-        year: releaseDate ? parseInt(releaseDate.split('-')[0]) : undefined,
-        artist: release["artist-credit"]?.[0]?.name || artist || undefined,
-        isReadyForPlayback: true
-      };
-    } catch (error) {
-      return null;
+    // End condition: we downloaded metadata for all songs. No need to
+    // poll anymore after that.
+    if (data.video_ids.length === data.total_tracks && pollIntervalRef.current) {
+      // Sanity check: see if all videos in the list really have metadata
+      const allAreReadyForPlayback = songs.every(oneSong => oneSong.isReadyForPlayback);
+      if (!allAreReadyForPlayback) {
+        throw new Error("Unexpected condition: not all songs have been marked as 'ready for playback'")
+      }
+
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
     }
   };
 
-  const pollDownloadState = async (playlistId: string, server: string) => {
-    const url = `${server}/playlist-download-state?playlist_id=${playlistId}`;
-    
+  const extractYoutubePlaylistId = (url: string): string => {
+    const urlParams = new URLSearchParams(url.split('?')[1]);
+    return urlParams.get('list') || '';
+  };
+
+  const handleRetrieveSongs = async () => {
     try {
+      setLoading(true);
+      setError(null);
+
+      const playlistId = extractYoutubePlaylistId(playlistUrlInput);
+      if (!playlistId) {
+        throw new Error("Invalid playlist URL -- missing playlist ID (list=...)");
+      }
+
+      // No waiting for this fetch to complete - it starts the download process on the server
+      fetch(`${server}/playlist-download?playlist_url=${encodeURIComponent(playlistUrlInput)}`);
+
+      const url = `${server}/playlist-items?playlist_url=${encodeURIComponent(playlistUrlInput)}`;
       const response = await fetch(url);
       const data = await response.json();
       
-      if (data.track_index && data.total_tracks && data.video_ids) {
-        if (data.video_ids.length > lastVideoIdsCountRef.current) {
-          const newVideoId = data.video_ids[data.video_ids.length - 1];
-          
-          setSongs(prevSongs => {
-            const targetSong = prevSongs.find(song => song.videoId === newVideoId);
-            if (targetSong) {
-              getMetadataForSong(targetSong).then(songWithMetadata => {
-                setSongs(currentSongs => {
-                  if (songWithMetadata) {
-                    return currentSongs.map(song => song.videoId === newVideoId ? songWithMetadata : song);
-                  } else {
-                    return currentSongs.filter(song => song.videoId !== newVideoId);
-                  }
-                });
-              });
-            }
-            return prevSongs;
-          });
-          
-          lastVideoIdsCountRef.current = data.video_ids.length;
-        }
-        
-        if (data.video_ids.length === data.total_tracks && pollIntervalRef.current) {
-          clearInterval(pollIntervalRef.current);
-          pollIntervalRef.current = null;
-        }
+      if (data.error) {
+        setError(data.error);
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error('Poll error:', error);
-    }
-  };
 
-  const handleStartPolling = (playlistId: string, server: string, playlistUrl: string) => {
-    lastVideoIdsCountRef.current = 0;
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
+      const songs: Song[] = data.video_items.map((item: any) => {
+        const newSong: Song = new Song(item.id, item.title);
+        newSong.bestThumbnailUrl = item.thumbnails.reduce((best: any, current: any) => 
+          (current.height * current.width) > (best.height * best.width) ? current : best
+        ).url;
+        return newSong;
+      });
+      
+      console.log(`############ About to call setSongs with:\n${JSON.stringify(songs, null, 2)}`);
+
+      setSongs(songs);
+      songsRef.current = songs;
+      setPlaylistName('YouTube Playlist');
+      setIsNewGame(false);
+      setCurrentSongIndex(0);
+      setIsInfoVisible(false);
+      
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+      pollIntervalRef.current = setInterval(() => pollDownloadState(playlistId, server), 1000);
+      
+      setLoading(false);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unexpected error occurred");
+      }
+      setLoading(false);
     }
-    pollIntervalRef.current = setInterval(() => pollDownloadState(playlistId, server), 1000);
   };
 
   const startPlayback = async (videoId: string) => {
     if (!videoRef.current) return;
     
     const server = localStorage.getItem('selectedServer') || 'http://localhost:3000';
-    const url = `${server}/playlist-items?playlist_url=${encodeURIComponent(playlistUrl)}`;
+    const url = `${server}/hls-live?video_id=${videoId}`;
     
     try {
       const response = await fetch(url);
@@ -220,13 +234,13 @@ const App: React.FC = () => {
   };
 
   const handlePrevious = () => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : songs.length - 1));
+    setCurrentSongIndex((prev) => (prev > 0 ? prev - 1 : songs.length - 1));
     setIsInfoVisible(false);
     setReleases([]);
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev < songs.length - 1 ? prev + 1 : 0));
+    setCurrentSongIndex((prev) => (prev < songs.length - 1 ? prev + 1 : 0));
     setIsInfoVisible(false);
     setReleases([]);
   };
@@ -255,13 +269,16 @@ const App: React.FC = () => {
           handleNext();
         }
       }
+      if (event.ctrlKey && event.shiftKey && event.key === 'S') {
+        setShowServerSelect(!showServerSelect);
+      }
     };
 
     window.addEventListener("keydown", handleKeyPress);
     return () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [songs.length]);
+  }, [songs.length, showServerSelect]);
 
   useEffect(() => {
     return () => {
@@ -276,22 +293,59 @@ const App: React.FC = () => {
 
   if (isNewGame) {
     return (
-      <PlaylistSelector
-        setSongs={setSongs}
-        setPlaylistName={setPlaylistName}
-        setPlaylistUrl={setPlaylistUrl}
-        setIsNewGame={setIsNewGame}
-        setCurrentIndex={setCurrentIndex}
-        setIsInfoVisible={setIsInfoVisible}
-        onStartPolling={handleStartPolling}
-      />
+      <div className="mb-4">
+        <div>
+          <img src="img/logo.png"></img>
+        </div>
+        
+        {showServerSelect && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Server:</label>
+            <select 
+              value={server} 
+              onChange={(e) => setServer(e.target.value)}
+              className="p-2 border rounded w-full max-w-md"
+            >
+              <option value="http://localhost:3000">Local Server</option>
+              <option value="https://gmonixter-backend.onrender.com">Remote server gmonixter-backend</option>
+            </select>
+          </div>
+        )}
+
+        <input
+          type="text"
+          placeholder="Paste YouTube Playlist URL"
+          value={playlistUrlInput}
+          onChange={(e) => setPlaylistUrlInput(e.target.value)}
+          className="p-2 border rounded w-full max-w-md"
+        />
+        <button
+          onClick={handleRetrieveSongs}
+          disabled={loading}
+          className={`mt-2 px-4 py-2 rounded w-full ${
+            loading 
+              ? 'bg-gray-400 cursor-not-allowed text-gray-600' 
+              : 'bg-blue-500 hover:bg-blue-600 text-white'
+          }`}
+        >
+          💃🏻 Get Songs 🕺🏻
+        </button>
+
+        <Loading loading={loading} />
+        <ErrorUI error={error} />
+      </div>
     );
   }
 
-  // Normal case - the user is logged on
+  const indexOfFirstSongReadyForPlayback = songs.findIndex(oneSong => oneSong.isReadyForPlayback);
+  if (indexOfFirstSongReadyForPlayback >= 0) {
+    setCurrentSongIndex(indexOfFirstSongReadyForPlayback);
+  }
+
+  // Main game logic UI
   return (
     <div className="flex flex-col items-center">
-      {songs.length > 0 && (
+      {songs.length >= 0  && (
         <div className="flex flex-col items-center bg-white shadow-md rounded-md p-4 w-full max-w-md">
           <h1 className="text-blue-500 text-lg">Playlist: {playlistName}</h1>
           <div className="py-4 px-8">
@@ -299,10 +353,10 @@ const App: React.FC = () => {
               ref={videoRef}
               controls
               className="w-full max-w-md rounded"
-              style={{ display: songs[currentIndex].isReadyForPlayback ? 'block' : 'none' }}
+              style={{ display: songs[currentSongIndex].isReadyForPlayback ? 'block' : 'none' }}
             />
-            {songs[currentIndex].isReadyForPlayback ? (
-              <div onClick={() => startPlayback(songs[currentIndex].videoId)} className="cursor-pointer mt-2">
+            {songs[currentSongIndex].isReadyForPlayback ? (
+              <div onClick={() => startPlayback(songs[currentSongIndex].videoId)} className="cursor-pointer mt-2">
                 <div className="bg-green-500 text-white p-4 rounded text-center hover:bg-green-600">
                   ▶️ Play Video
                 </div>
@@ -329,25 +383,25 @@ const App: React.FC = () => {
           {isInfoVisible && (
             <div className="w-full mt-2 p-2">
               <h3 className="text-lg font-medium">
-                {songs[currentIndex].title || songs[currentIndex].rawYouTubeTitle}
+                {songs[currentSongIndex].title || songs[currentSongIndex].rawYouTubeTitle}
               </h3>
               <p className="text-gray-500">
-                {songs[currentIndex].year && songs[currentIndex].artist 
-                  ? `${songs[currentIndex].year} - ${songs[currentIndex].artist}`
+                {songs[currentSongIndex].year && songs[currentSongIndex].artist 
+                  ? `${songs[currentSongIndex].year} - ${songs[currentSongIndex].artist}`
                   : 'Metadata loading...'}
               </p>
 
-              {(songs[currentIndex].bestThumbnailUrl) && (
-                <img src={songs[currentIndex].bestThumbnailUrl}></img>
+              {(songs[currentSongIndex].bestThumbnailUrl) && (
+                <img src={songs[currentSongIndex].bestThumbnailUrl}></img>
               )}
 
-              {songs[currentIndex].title && songs[currentIndex].artist && (
+              {songs[currentSongIndex].title && songs[currentSongIndex].artist && (
                 <a
                   href="#"
                   onClick={() =>
                     handleLoadExtraReleases(
-                      songs[currentIndex].title!,
-                      songs[currentIndex].artist!
+                      songs[currentSongIndex].title!,
+                      songs[currentSongIndex].artist!
                     )
                   }
                   className="text-gray-500"
@@ -388,7 +442,7 @@ const App: React.FC = () => {
           </div>
 
           <div className="text-gray-400 text-sm mt-2">
-            Song {currentIndex + 1} of {songs.length}
+            Song {currentSongIndex + 1} of {songs.length}
           </div>
           <div className="w-full mt-2 p-2">
             <a
