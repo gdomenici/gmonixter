@@ -345,8 +345,7 @@ const App: React.FC = () => {
   // Main game logic UI
   return (
     <div className="flex flex-col items-center">
-      {currentSongIndex >= 0  && (
-        // only display this component if there is at least one song ready for playback
+      {songs.length >= 0  && (
         <div className="flex flex-col items-center bg-white shadow-md rounded-md p-4 w-full max-w-md">
           <h1 className="text-blue-500 text-lg">Playlist: {playlistName}</h1>
           <div className="py-4 px-8">
