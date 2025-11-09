@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import Hls from "hls.js";
 
 import Song from "./components/types/Song";
-import MetadataNotFoundError from "./components/types/MetadataNotFoundError";
 import Loading from "./components/ui/Loading";
 import ErrorUI from "./components/ui/ErrorUI";
 
@@ -20,11 +19,14 @@ interface Release {
   artistCredit: string;
 }
 
+
 const App: React.FC = () => {
-  const songsRef = useRef<Song[]>([]);
-  const [songs, setSongs] = useState<Song[]>([]);
+  const songsRef = useRef<Map<string, Song>>(new Map<string, Song>());
+  const [songs, setSongs] = useState<Map<string, Song>>(new Map<string, Song>());
+  const [videoIdPlaybackQueue, setVideoIdPlaybackQueue] = useState<string[]>([]);
+  const videoIdPlaybackQueueRef = useRef<string[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
-  const [currentSongIndex, setCurrentSongIndex] = useState<number>(-1);
+  const [videoIdIndexInQueue, setVideoIdIndexInQueue] = useState<number>(-1);
   const [isInfoVisible, setIsInfoVisible] = useState<boolean>(false);
   const [isNewGame, setIsNewGame] = useState<boolean>(true);
   const [playlistName, setPlaylistName] = useState<string>("");
@@ -38,7 +40,9 @@ const App: React.FC = () => {
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
-   * Called periodically to poll the download state from the server
+   * Called periodically to poll the download state from the server. It will 
+   * add the newly retrieved song to the video ID playback queue, and fetch
+   * their metadata.
    * @param playlistId YouTube playlist ID
    * @param server Server base URL
    */
@@ -53,26 +57,34 @@ const App: React.FC = () => {
 
     // Always look at the very last video ID the server added
     const latestVideoID = data.video_ids[data.video_ids.length - 1];
-    console.log(`Looking for latest video ID ${latestVideoID} in songs array`);
-    console.log(`songs array contains:\n${JSON.stringify(songsRef.current, null, 2)}`);
+    console.log(`Data is:\n${JSON.stringify(data, null, 2)}`);
+    console.log(`Latest video ID: ${latestVideoID}`);
 
-    const songToPopulate = songsRef.current.find(oneSong => oneSong.videoId === latestVideoID);
+    // See if we've already added this video ID to the playback queue
+    if (videoIdPlaybackQueueRef.current.includes(latestVideoID)) {
+      // No need to add it again in this case
+      return;
+    }
+
+    const songToPopulate = songsRef.current.get(latestVideoID);
     if (!songToPopulate) {
       throw new Error(`Song with video ID ${latestVideoID} not present in downloaded playlist items`);
     }
     // Parses the raw title and retrieves metadata from MusicBrainz
     songToPopulate.populateMetadata();
-    songToPopulate.isReadyForPlayback = true;
+    // Add this video ID to the playback queue
+    const updatedQueue = [...videoIdPlaybackQueueRef.current, songToPopulate.videoId];
+    videoIdPlaybackQueueRef.current = updatedQueue;
+    setVideoIdPlaybackQueue(updatedQueue);
+    
+    // The first time, but only then, set the "video ID queue index" to 0
+    if (videoIdIndexInQueue === -1) {
+      setVideoIdIndexInQueue(0);
+    }
 
-    // End condition: we downloaded metadata for all songs. No need to
+    // End condition: we received the callback for all songs. No need to
     // poll anymore after that.
     if (data.video_ids.length === data.total_tracks && pollIntervalRef.current) {
-      // Sanity check: see if all videos in the list really have metadata
-      const allAreReadyForPlayback = songs.every(oneSong => oneSong.isReadyForPlayback);
-      if (!allAreReadyForPlayback) {
-        throw new Error("Unexpected condition: not all songs have been marked as 'ready for playback'")
-      }
-
       clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = null;
     }
@@ -106,21 +118,24 @@ const App: React.FC = () => {
         return;
       }
 
-      const songs: Song[] = data.video_items.map((item: any) => {
+      const songsArray: Song[] = data.video_items.map((item: any) => {
         const newSong: Song = new Song(item.id, item.title);
         newSong.bestThumbnailUrl = item.thumbnails.reduce((best: any, current: any) => 
           (current.height * current.width) > (best.height * best.width) ? current : best
         ).url;
         return newSong;
       });
-      
-      console.log(`############ About to call setSongs with:\n${JSON.stringify(songs, null, 2)}`);
 
-      setSongs(songs);
-      songsRef.current = songs;
+      // The songs map has the video ID as key, and the Song instance as value
+      const songsMap = new Map(songsArray.map(song => [song.videoId, song]));
+
+      setSongs(songsMap);
+      songsRef.current = songsMap;
+      setVideoIdPlaybackQueue([]);
+      videoIdPlaybackQueueRef.current = [];
       setPlaylistName('YouTube Playlist');
       setIsNewGame(false);
-      setCurrentSongIndex(0);
+      setVideoIdIndexInQueue(-1);
       setIsInfoVisible(false);
       
       if (pollIntervalRef.current) {
@@ -143,15 +158,9 @@ const App: React.FC = () => {
     if (!videoRef.current) return;
     
     const server = localStorage.getItem('selectedServer') || 'http://localhost:3000';
-    const url = `${server}/hls-live?video_id=${videoId}`;
+    const hlsUrl = `${server}/hls-live/${videoId}`;
     
     try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch HLS playlist');
-      
-      const data = await response.json();
-      const hlsUrl = data.hlsUrl; // Assuming the API returns an hlsUrl field
-      
       if (Hls.isSupported()) {
         if (hlsRef.current) {
           hlsRef.current.destroy();
@@ -234,13 +243,13 @@ const App: React.FC = () => {
   };
 
   const handlePrevious = () => {
-    setCurrentSongIndex((prev) => (prev > 0 ? prev - 1 : songs.length - 1));
+    setVideoIdIndexInQueue((prev) => (prev > 0 ? prev - 1 : videoIdPlaybackQueue.length - 1));
     setIsInfoVisible(false);
     setReleases([]);
   };
 
   const handleNext = () => {
-    setCurrentSongIndex((prev) => (prev < songs.length - 1 ? prev + 1 : 0));
+    setVideoIdIndexInQueue((prev) => (prev < videoIdPlaybackQueue.length - 1 ? prev + 1 : 0));
     setIsInfoVisible(false);
     setReleases([]);
   };
@@ -262,7 +271,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (songs.length > 0) {
+      if (songs.size > 0) {
         if (event.key === "ArrowLeft") {
           handlePrevious();
         } else if (event.key === "ArrowRight") {
@@ -278,7 +287,7 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [songs.length, showServerSelect]);
+  }, [songs.size, showServerSelect]);
 
   useEffect(() => {
     return () => {
@@ -290,6 +299,14 @@ const App: React.FC = () => {
       }
     };
   }, []);
+
+  const currentlyPlayingSong = (): Song => {
+    const toReturn = songs.get(videoIdPlaybackQueue[videoIdIndexInQueue]);
+    if (!toReturn) {
+      throw new Error(`Could not find song with video ID ${videoIdPlaybackQueue[videoIdIndexInQueue]}`);
+    }
+    return toReturn;
+  }
 
   if (isNewGame) {
     return (
@@ -308,6 +325,16 @@ const App: React.FC = () => {
             >
               <option value="http://localhost:3000">Local Server</option>
               <option value="https://gmonixter-backend.onrender.com">Remote server gmonixter-backend</option>
+            </select>
+            
+            <label className="block text-sm font-medium mb-2 mt-4">Precooked Playlists:</label>
+            <select 
+              onChange={(e) => setPlaylistUrlInput(e.target.value)}
+              className="p-2 border rounded w-full max-w-md"
+            >
+              <option value="">Select a playlist...</option>
+              <option value="https://www.youtube.com/watch?v=djV11Xbc914&list=PLcMK01bSTnE43el39pnOjs9hFM3qtYRsN">gmonixter-test-01</option>
+              <option value="https://www.youtube.com/watch?v=t99KH0TR-J4&list=PLcMK01bSTnE65yJUpsD4E3kAyy4kLBt7M">gmonixter-test-02</option>
             </select>
           </div>
         )}
@@ -337,15 +364,14 @@ const App: React.FC = () => {
     );
   }
 
-  const indexOfFirstSongReadyForPlayback = songs.findIndex(oneSong => oneSong.isReadyForPlayback);
-  if (indexOfFirstSongReadyForPlayback >= 0) {
-    setCurrentSongIndex(indexOfFirstSongReadyForPlayback);
-  }
-
   // Main game logic UI
   return (
     <div className="flex flex-col items-center">
-      {songs.length >= 0  && (
+      { videoIdPlaybackQueue.length === 0? (
+          <div className="bg-gray-300 text-gray-600 p-4 rounded text-center">
+            Please wait... preparing videos
+          </div>)
+          : (
         <div className="flex flex-col items-center bg-white shadow-md rounded-md p-4 w-full max-w-md">
           <h1 className="text-blue-500 text-lg">Playlist: {playlistName}</h1>
           <div className="py-4 px-8">
@@ -353,19 +379,13 @@ const App: React.FC = () => {
               ref={videoRef}
               controls
               className="w-full max-w-md rounded"
-              style={{ display: songs[currentSongIndex].isReadyForPlayback ? 'block' : 'none' }}
+              // style={{ display: songs[songIndexInQueue].isReadyForPlayback ? 'block' : 'none' }}
             />
-            {songs[currentSongIndex].isReadyForPlayback ? (
-              <div onClick={() => startPlayback(songs[currentSongIndex].videoId)} className="cursor-pointer mt-2">
-                <div className="bg-green-500 text-white p-4 rounded text-center hover:bg-green-600">
-                  ▶️ Play Video
-                </div>
+            <div onClick={() => startPlayback(videoIdPlaybackQueue[videoIdIndexInQueue])} className="cursor-pointer mt-2">
+              <div className="bg-green-500 text-white p-4 rounded text-center hover:bg-green-600">
+                ▶️ Play Video
               </div>
-            ) : (
-              <div className="bg-gray-300 text-gray-600 p-4 rounded text-center">
-                Please wait... preparing video
-              </div>
-            )}
+            </div>
           </div>
 
           <button
@@ -383,25 +403,25 @@ const App: React.FC = () => {
           {isInfoVisible && (
             <div className="w-full mt-2 p-2">
               <h3 className="text-lg font-medium">
-                {songs[currentSongIndex].title || songs[currentSongIndex].rawYouTubeTitle}
+                {currentlyPlayingSong().title || currentlyPlayingSong().rawYouTubeTitle}
               </h3>
               <p className="text-gray-500">
-                {songs[currentSongIndex].year && songs[currentSongIndex].artist 
-                  ? `${songs[currentSongIndex].year} - ${songs[currentSongIndex].artist}`
+                {currentlyPlayingSong().year && currentlyPlayingSong().artist 
+                  ? `${currentlyPlayingSong().year} - ${currentlyPlayingSong().artist}`
                   : 'Metadata loading...'}
               </p>
 
-              {(songs[currentSongIndex].bestThumbnailUrl) && (
-                <img src={songs[currentSongIndex].bestThumbnailUrl}></img>
+              {(currentlyPlayingSong().bestThumbnailUrl) && (
+                <img src={currentlyPlayingSong().bestThumbnailUrl}></img>
               )}
 
-              {songs[currentSongIndex].title && songs[currentSongIndex].artist && (
+              {currentlyPlayingSong().title && currentlyPlayingSong().artist && (
                 <a
                   href="#"
                   onClick={() =>
                     handleLoadExtraReleases(
-                      songs[currentSongIndex].title!,
-                      songs[currentSongIndex].artist!
+                      currentlyPlayingSong().title!,
+                      currentlyPlayingSong().artist!
                     )
                   }
                   className="text-gray-500"
@@ -442,7 +462,9 @@ const App: React.FC = () => {
           </div>
 
           <div className="text-gray-400 text-sm mt-2">
-            Song {currentSongIndex + 1} of {songs.length}
+            {/* Here we show the length of the playback queue, although
+              the queue is potentially still growing and may change in size.  */}
+            Song {videoIdIndexInQueue + 1} of {videoIdPlaybackQueue.length}
           </div>
           <div className="w-full mt-2 p-2">
             <a

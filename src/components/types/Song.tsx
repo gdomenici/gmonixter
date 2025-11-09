@@ -5,13 +5,11 @@ export default class Song {
   year?: number;
   artist?: string;
   bestThumbnailUrl?: string;
-  isReadyForPlayback: boolean;
   hasMetadata: boolean;
 
   constructor(videoId: string, rawYouTubeTitle: string) {
     this.videoId = videoId;
     this.rawYouTubeTitle = rawYouTubeTitle;
-    this.isReadyForPlayback = false;
     this.hasMetadata = false;
   }
 
@@ -21,6 +19,10 @@ export default class Song {
      * @param currentSong song to populate metadata for
      */
      async populateMetadata () {
+      if (this.hasMetadata) {
+        return;
+      }
+
       const rawYouTubeTitle = this.rawYouTubeTitle;
       let artist: string | null = null;
       let rest: string;
