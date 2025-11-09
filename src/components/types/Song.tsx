@@ -44,7 +44,7 @@ export default class Song {
       rest = rawYouTubeTitle;
     }
 
-    tempTitle = rest.split(" (")[0].split(" [")[0].split(" ft")[0].split(" (feat")[0].split(" FEAT.")[0].replace(/"/g, '').replace(/'/g, '');
+    tempTitle = rest.split(" (")[0].split(" [")[0].split(" ft")[0].split(" (feat")[0].split(" FEAT.")[0].replace(/"/g, '');
     if (!tempTitle.trim()) {
       console.log(`Could not parse '${rawYouTubeTitle}' sensibly. Cannot retrieve metadata.`);
       this.hasMetadata = false;
@@ -53,31 +53,28 @@ export default class Song {
 
     const query = artist ? `"${tempTitle}" AND artist:"${artist}"` : `"${tempTitle}"`;
     const params = new URLSearchParams({ query, fmt: "json", limit: "10" });
-    const response = await fetch(`https://musicbrainz.org/ws/2/release?${params}`);
+    const response = await fetch(`https://musicbrainz.org/ws/2/release?${params}`, {
+        headers: { 'User-Agent': 'gmonixter/1.0.0 (guido.domenici@gmail.com)' }
+    });
     const data = await response.json();
     
-    if (!data.releases || data.releases.length === 0) {
-      console.log(`Metadata not found in MusicBrainz for ${rawYouTubeTitle}`);
-      this.hasMetadata = false;
-      return;
-    }
+    // if (!data.releases || data.releases.length === 0) {
+    //   console.log(`Metadata not found in MusicBrainz for ${rawYouTubeTitle}`);
+    //   this.hasMetadata = false;
+    //   return;
+    // }
 
 
-    const mainRelease = data.releases[0];
-    const releaseDate = mainRelease.date || mainRelease["release-events"]?.[0]?.date;
-    this.title = mainRelease.title || tempTitle;
-    this.year = releaseDate ? parseInt(releaseDate.split('-')[0]) : undefined;
-    this.artist = mainRelease["artist-credit"]?.[0]?.name || artist || undefined;
-    
- 
     // Now collect all releases, but only if they are reliable enough (higher scores)
-    this.allReleases =     
+    // Make sure they're sorted by year
+    const tempReleases: Release[] =     
       data.releases
       .filter(
         (item: any) =>
           item.date && item.status === "Official" && item.score >= 85
       )
       .map((item: any) => ({
+        title: item.title,
         year: new Date(item.date).getFullYear(),
         country: item.country,
         mediaFormat: item.media?.[0]?.format,
@@ -87,6 +84,18 @@ export default class Song {
         return a.year - b.year;
       });
 
+    if (!tempReleases || tempReleases.length === 0) {
+      console.log(`Metadata not found in MusicBrainz for ${rawYouTubeTitle}`);
+      this.hasMetadata = false;
+      return;
+    }
+
+    const mainRelease = tempReleases[0];
+    this.title = mainRelease.title || tempTitle;
+    this.year = mainRelease.year;
+    this.artist = mainRelease.artistCredit;
+    
+    this.allReleases = tempReleases;
     
     this.hasMetadata = true;
 

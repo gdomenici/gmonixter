@@ -73,11 +73,6 @@ const App: React.FC = () => {
     videoIdPlaybackQueueRef.current = updatedQueue;
     setVideoIdPlaybackQueue(updatedQueue);
     
-    // The first time, but only then, set the "video ID queue index" to 0
-    if (videoIdIndexInQueue === -1) {
-      setVideoIdIndexInQueue(0);
-    }
-
     // End condition: we received the callback for all songs. No need to
     // poll anymore after that.
     if (data.video_ids.length === data.total_tracks && pollIntervalRef.current) {
@@ -131,7 +126,7 @@ const App: React.FC = () => {
       videoIdPlaybackQueueRef.current = [];
       setPlaylistName('YouTube Playlist');
       setIsNewGame(false);
-      setVideoIdIndexInQueue(-1);
+      setVideoIdIndexInQueue(0); // This is a small lie for now (should be -1), but it simplifies our life later
       setIsInfoVisible(false);
       setAreExtraReleasesVisible(false);
       
@@ -307,7 +302,7 @@ const App: React.FC = () => {
     <div className="flex flex-col items-center">
       { videoIdPlaybackQueue.length === 0? (
           <div className="bg-gray-300 text-gray-600 p-4 rounded text-center">
-            Please wait... preparing videos
+            Please wait... preparing songs
           </div>)
           : (
         <div className="flex flex-col items-center bg-white shadow-md rounded-md p-4 w-full max-w-md">
@@ -317,7 +312,6 @@ const App: React.FC = () => {
               ref={videoRef}
               controls
               className="w-full max-w-md rounded"
-              // style={{ display: songs[songIndexInQueue].isReadyForPlayback ? 'block' : 'none' }}
             />
             <div onClick={() => startPlayback(videoIdPlaybackQueue[videoIdIndexInQueue])} className="cursor-pointer mt-2">
               <div className="bg-green-500 text-white p-4 rounded text-center hover:bg-green-600">
