@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import Hls from "hls.js";
 
 import Song from "./components/types/Song";
+import Release from "./components/types/Release";
+
 import Loading from "./components/ui/Loading";
 import ErrorUI from "./components/ui/ErrorUI";
 
@@ -12,12 +14,6 @@ import {
   ChevronUp,
 } from "lucide-react";
 
-interface Release {
-  year: number;
-  country: string;
-  mediaFormat: string;
-  artistCredit: string;
-}
 
 
 const App: React.FC = () => {
@@ -25,9 +21,9 @@ const App: React.FC = () => {
   const [songs, setSongs] = useState<Map<string, Song>>(new Map<string, Song>());
   const [videoIdPlaybackQueue, setVideoIdPlaybackQueue] = useState<string[]>([]);
   const videoIdPlaybackQueueRef = useRef<string[]>([]);
-  const [releases, setReleases] = useState<Release[]>([]);
   const [videoIdIndexInQueue, setVideoIdIndexInQueue] = useState<number>(-1);
   const [isInfoVisible, setIsInfoVisible] = useState<boolean>(false);
+  const [areExtraReleasesVisible, setAreExtraReleasesVisible] = useState<boolean>(false);
   const [isNewGame, setIsNewGame] = useState<boolean>(true);
   const [playlistName, setPlaylistName] = useState<string>("");
   const [playlistUrlInput, setPlaylistUrlInput] = useState<string>("");
@@ -137,6 +133,7 @@ const App: React.FC = () => {
       setIsNewGame(false);
       setVideoIdIndexInQueue(-1);
       setIsInfoVisible(false);
+      setAreExtraReleasesVisible(false);
       
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
@@ -183,80 +180,21 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLoadExtraReleases = async (title: string, artist: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      let truncatedTitle = title;
-      const remasteredIndex = title.search(/\-?\s?remastered/i);
-      if (remasteredIndex > 0) {
-        truncatedTitle = title.substring(0, remasteredIndex).trim();
-      }
-      console.log(`truncatedTitle is ${truncatedTitle}`);
-
-      // https://musicbrainz.org/doc/MusicBrainz_API/Search
-      const musicBrainzUrl = new URL("https://musicbrainz.org/ws/2/release");
-      musicBrainzUrl.searchParams.set(
-        "query",
-        `"${truncatedTitle}" AND artist:"${artist}"`
-      );
-      musicBrainzUrl.searchParams.set("fmt", "json");
-      musicBrainzUrl.searchParams.set("limit", "10");
-
-      console.log(`Query is: ${musicBrainzUrl.toString()}`);
-      const response = await fetch(musicBrainzUrl.toString());
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch releases data");
-      }
-
-      const data = await response.json();
-
-      // Filter out releases without date or which are unofficial
-      const tempReleases: Release[] = data.releases
-        .filter(
-          (item: any) =>
-            item.date && item.status === "Official" && item.score >= 85
-        )
-        .map((item: any) => ({
-          year: new Date(item.date).getFullYear(),
-          country: item.country,
-          mediaFormat: item.media?.[0]?.format,
-          artistCredit: item["artist-credit"]?.[0]?.name,
-        }))
-        .sort((a: Release, b: Release) => {
-          return a.year - b.year;
-        });
-
-      // console.log(`Results:\n${JSON.stringify(tempReleases, null, 2)}`);
-      setReleases(tempReleases);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unexpected error occurred");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handlePrevious = () => {
     setVideoIdIndexInQueue((prev) => (prev > 0 ? prev - 1 : videoIdPlaybackQueue.length - 1));
     setIsInfoVisible(false);
-    setReleases([]);
+    setAreExtraReleasesVisible(false);
   };
 
   const handleNext = () => {
     setVideoIdIndexInQueue((prev) => (prev < videoIdPlaybackQueue.length - 1 ? prev + 1 : 0));
     setIsInfoVisible(false);
-    setReleases([]);
+    setAreExtraReleasesVisible(false);
   };
 
   const renderReleasesRows = () => {
     const rows: any = [];
-    releases.forEach((oneRelease: Release) => {
+    currentlyPlayingSong().allReleases.forEach((oneRelease: Release) => {
       rows.push(
         <tr>
           <td>{oneRelease.year}</td>
@@ -408,7 +346,7 @@ const App: React.FC = () => {
               <p className="text-gray-500">
                 {currentlyPlayingSong().year && currentlyPlayingSong().artist 
                   ? `${currentlyPlayingSong().year} - ${currentlyPlayingSong().artist}`
-                  : 'Metadata loading...'}
+                  : 'No additional data available 🤷‍♂️'}
               </p>
 
               {(currentlyPlayingSong().bestThumbnailUrl) && (
@@ -419,10 +357,7 @@ const App: React.FC = () => {
                 <a
                   href="#"
                   onClick={() =>
-                    handleLoadExtraReleases(
-                      currentlyPlayingSong().title!,
-                      currentlyPlayingSong().artist!
-                    )
+                    setAreExtraReleasesVisible(!areExtraReleasesVisible)
                   }
                   className="text-gray-500"
                 >
@@ -430,7 +365,7 @@ const App: React.FC = () => {
                 </a>
               )}
 
-              {releases.length > 0 && (
+              {areExtraReleasesVisible && (
                 <table>
                   <thead>
                     <tr>
