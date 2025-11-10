@@ -208,7 +208,7 @@ const App: React.FC = () => {
           handleNext();
         }
       }
-      if (event.ctrlKey && event.shiftKey && event.key === 'S') {
+      if (event.ctrlKey && event.shiftKey && event.key === 'A') {
         setShowServerSelect(!showServerSelect);
       }
     };
