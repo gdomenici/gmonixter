@@ -14,7 +14,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, "index.html"),
-        authorize: path.resolve(__dirname, "authorize.html"), // New HTML file entry point
+        // authorize: path.resolve(__dirname, "authorize.html"), // New HTML file entry point
       },
     },
     target: "esnext", // Ensures support for top-level await
