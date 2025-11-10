@@ -14,8 +14,6 @@ import {
   ChevronUp,
 } from "lucide-react";
 
-
-
 const App: React.FC = () => {
   const songsRef = useRef<Map<string, Song>>(new Map<string, Song>());
   const [songs, setSongs] = useState<Map<string, Song>>(new Map<string, Song>());
@@ -29,7 +27,7 @@ const App: React.FC = () => {
   const [playlistUrlInput, setPlaylistUrlInput] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [server, setServer] = useState<string>("http://localhost:3000");
+  const [server, setServer] = useState<string>("https://gmonixter-backend.onrender.com");
   const [showServerSelect, setShowServerSelect] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -250,6 +248,7 @@ const App: React.FC = () => {
         
         {showServerSelect && (
           <div className="mb-4">
+            <div>(Current server: {server})</div>
             <label className="block text-sm font-medium mb-2">Server:</label>
             <select 
               value={server} 
