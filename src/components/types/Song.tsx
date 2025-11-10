@@ -58,12 +58,6 @@ export default class Song {
     });
     const data = await response.json();
     
-    // if (!data.releases || data.releases.length === 0) {
-    //   console.log(`Metadata not found in MusicBrainz for ${rawYouTubeTitle}`);
-    //   this.hasMetadata = false;
-    //   return;
-    // }
-
 
     // Now collect all releases, but only if they are reliable enough (higher scores)
     // Make sure they're sorted by year
