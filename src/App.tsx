@@ -32,7 +32,7 @@ const App: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
+ 
   /**
    * Called periodically to poll the download state from the server. It will 
    * add the newly retrieved song to the video ID playback queue, and fetch
@@ -147,7 +147,6 @@ const App: React.FC = () => {
   const startPlayback = async (videoId: string) => {
     if (!videoRef.current) return;
     
-    const server = localStorage.getItem('selectedServer') || 'http://localhost:3000';
     const hlsUrl = `${server}/hls-live/${videoId}`;
     
     try {
