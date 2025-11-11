@@ -256,6 +256,8 @@ const App: React.FC = () => {
             >
               <option value="http://localhost:3000">Local Server</option>
               <option value="https://gmonixter-backend.onrender.com">Remote server gmonixter-backend</option>
+              <option value="http://192.168.2.250:3000">QNAP on LAN</option>
+              <option value="http://domenici.myqnapcloud.com:3000">QNAP on WAN</option>
             </select>
             
             <label className="block text-sm font-medium mb-2 mt-4">Precooked Playlists:</label>
@@ -313,7 +315,7 @@ const App: React.FC = () => {
             />
             <div onClick={() => startPlayback(videoIdPlaybackQueue[videoIdIndexInQueue])} className="cursor-pointer mt-2">
               <div className="bg-green-500 text-white p-4 rounded text-center hover:bg-green-600">
-                ▶️ Play Video
+                ▶️ Play Song
               </div>
             </div>
           </div>
