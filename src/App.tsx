@@ -102,12 +102,14 @@ const SpotifyPlaylistCards: React.FC = () => {
   const handlePrevious = () => {
     setCurrentIndex((prev) => (prev > 0 ? prev - 1 : songs.length - 1));
     setIsInfoVisible(false);
+    setError(null);
     setReleases([]);
   };
 
   const handleNext = () => {
     setCurrentIndex((prev) => (prev < songs.length - 1 ? prev + 1 : 0));
     setIsInfoVisible(false);
+    setError(null);
     setReleases([]);
   };
 
@@ -171,20 +173,17 @@ const SpotifyPlaylistCards: React.FC = () => {
       });
 
       if (!response.ok && response.status !== 204) {
-        throw new Error('Error loading track: ' + response.statusText);
+        throw new Error(`Error loading track: ${response.statusText} (${response.status})`);
       }
     } catch (error) {
       setError('Error: ' + (error as Error).message);
     }
   };
 
-  const handlePlay = () => {
-    player?.resume();
+  const handlePauseResume = () => {
+    player?.togglePlay();
   };
 
-  const handlePause = () => {
-    player?.pause();
-  };
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -266,19 +265,13 @@ const SpotifyPlaylistCards: React.FC = () => {
                 onClick={() => playTrack(songs[currentIndex].trackId)}
                 className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded"
               >
-                Load Track
+                Play Song 
               </button>
               <button
-                onClick={handlePlay}
+                onClick={handlePauseResume}
                 className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
               >
-                Play
-              </button>
-              <button
-                onClick={handlePause}
-                className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded"
-              >
-                Pause
+                Pause/Resume
               </button>
             </div>
           </div>
