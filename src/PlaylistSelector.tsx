@@ -79,10 +79,10 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
 
       const playlist = await response.json();
 
-      // Filter out songs without preview URLs and map to our Song interface
-      const validSongs = playlist.tracks.items
-        .filter((item: any) => item.track && item.track.preview_url)
+      const validSongs: Song[] = playlist.tracks.items
+        .filter((item: any) => item.track)
         .map((item: any) => ({
+          trackId: item.track.id,
           title: item.track.name,
           year: new Date(item.track.album.release_date).getFullYear(),
           artist: item.track.artists[0].name,

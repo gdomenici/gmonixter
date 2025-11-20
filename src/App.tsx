@@ -37,6 +37,9 @@ const SpotifyPlaylistCards: React.FC = () => {
   const [playlistName, setPlaylistName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  
+  let player: any;
+  let deviceId: string;
 
   const handleLoadExtraReleases = async (title: string, artist: string) => {
     try {
@@ -129,6 +132,60 @@ const SpotifyPlaylistCards: React.FC = () => {
     return rows;
   };
 
+  const initializePlayer = () => {
+    player = new (window as any).Spotify.Player({
+      name: 'Gmonixter Player',
+      getOAuthToken: (cb: (token: string) => void) => { cb(getToken()!); },
+      volume: 0.5
+    });
+
+    player.addListener('ready', ({ device_id }: { device_id: string }) => {
+      deviceId = device_id;
+      console.log('Player ready! Device ID:', device_id);
+    });
+
+    player.addListener('not_ready', ({ device_id }: { device_id: string }) => {
+      console.log('Device has gone offline:', device_id);
+    });
+
+    try {
+      player.connect();
+    } catch (err) {
+      setError(`Error connecting to the Spotify player: ${(err as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const playTrack = async (trackId: string) => {
+    try {
+      const response = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}`
+        },
+        body: JSON.stringify({
+          uris: [`spotify:track:${trackId}`]
+        })
+      });
+
+      if (!response.ok && response.status !== 204) {
+        throw new Error('Error loading track: ' + response.statusText);
+      }
+    } catch (error) {
+      setError('Error: ' + (error as Error).message);
+    }
+  };
+
+  const handlePlay = () => {
+    player?.resume();
+  };
+
+  const handlePause = () => {
+    player?.pause();
+  };
+
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (songs.length > 0) {
@@ -144,6 +201,25 @@ const SpotifyPlaylistCards: React.FC = () => {
     return () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
+  }, [songs.length]);
+
+  useEffect(() => {
+    if (songs.length > 0) {
+      // Load Spotify Web Playback SDK
+      const script = document.createElement('script');
+      script.src = 'https://sdk.scdn.co/spotify-player.js';
+      script.async = true;
+      document.body.appendChild(script);
+
+
+      
+      // Initialize Spotify Web Playback SDK
+      (window as any).onSpotifyWebPlaybackSDKReady = () => {
+        if (getToken()) {
+          initializePlayer();
+        }
+      };
+    }
   }, [songs.length]);
 
   // The user doesn't have a valid token
@@ -176,13 +252,35 @@ const SpotifyPlaylistCards: React.FC = () => {
   }
 
   // Normal case - the user is logged on
+
+
   return (
     <div className="flex flex-col items-center">
+
       {songs.length > 0 && (
         <div className="flex flex-col items-center bg-white shadow-md rounded-md p-4 w-full max-w-md">
           <h1 className="text-blue-500 text-lg">Playlist: {playlistName}</h1>
-          <div className="py-4 px-8 hover:bg-blue-500">
-            <audio src={songs[currentIndex].previewUrl} controls></audio>
+          <div className="py-4 px-8">
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => playTrack(songs[currentIndex].trackId)}
+                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded"
+              >
+                Load Track
+              </button>
+              <button
+                onClick={handlePlay}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
+              >
+                Play
+              </button>
+              <button
+                onClick={handlePause}
+                className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded"
+              >
+                Pause
+              </button>
+            </div>
           </div>
 
           <button
