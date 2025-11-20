@@ -37,9 +37,8 @@ const SpotifyPlaylistCards: React.FC = () => {
   const [playlistName, setPlaylistName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  
-  let player: any;
-  let deviceId: string;
+  const [deviceId, setDeviceId] = useState<string |null>(null);  
+  const [player, setPlayer] = useState<any>(null);  
 
   const handleLoadExtraReleases = async (title: string, artist: string) => {
     try {
@@ -133,23 +132,24 @@ const SpotifyPlaylistCards: React.FC = () => {
   };
 
   const initializePlayer = () => {
-    player = new (window as any).Spotify.Player({
+    const playerInstance = new (window as any).Spotify.Player({
       name: 'Gmonixter Player',
       getOAuthToken: (cb: (token: string) => void) => { cb(getToken()!); },
       volume: 0.5
     });
 
-    player.addListener('ready', ({ device_id }: { device_id: string }) => {
-      deviceId = device_id;
+    playerInstance.addListener('ready', ({ device_id }: { device_id: string }) => {
+      setDeviceId(device_id);
       console.log('Player ready! Device ID:', device_id);
     });
 
-    player.addListener('not_ready', ({ device_id }: { device_id: string }) => {
+    playerInstance.addListener('not_ready', ({ device_id }: { device_id: string }) => {
       console.log('Device has gone offline:', device_id);
     });
 
     try {
-      player.connect();
+      playerInstance.connect();
+      setPlayer(playerInstance);
     } catch (err) {
       setError(`Error connecting to the Spotify player: ${(err as Error).message}`);
     } finally {
