@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Song from "./components/types/Song";
 import { getToken } from "./components/Utils";
 import Loading from "./components/ui/Loading";
 import ErrorUI from "./components/ui/ErrorUI";
+import playlistsData from "./playlists-curated.json";
 // import {
 //   Tabs,
 //   TabsHeader,
@@ -28,6 +29,7 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
   setIsInfoVisible,
 }) => {
   const [playlistUrl, setPlaylistUrl] = useState<string>("");
+  const [selectedCurated, setSelectedCurated] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,6 +45,18 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
     return parts[4] || "";
   };
 
+  const curatedPlaylists = useMemo(() => {
+    try {
+      if (playlistsData && Array.isArray((playlistsData as any).playlists)) {
+        return (playlistsData as any).playlists as { id: string; name: string }[];
+      }
+      return [];
+    } catch (e) {
+      console.error("Failed reading playlists-curated.json", e);
+      return [];
+    }
+  }, [playlistsData]);
+
   // Fisher-Yates shuffle algorithm
   const shuffleArray = <T,>(array: T[]): T[] => {
     const shuffled = [...array];
@@ -53,12 +67,12 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
     return shuffled;
   };
 
-  const handleRetrieveSongs = async () => {
+  const handleRetrieveSongs = async (forcedPlaylistId?: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      const playlistId = extractPlaylistId(playlistUrl);
+      const playlistId = forcedPlaylistId ?? extractPlaylistId(playlistUrl);
       if (!playlistId) {
         throw new Error("Invalid playlist URL");
       }
@@ -119,48 +133,6 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
         <img src="img/logo.png"></img>
       </div>
 
-      {/* <Tabs value="dashboard">
-        <TabsHeader>
-          <Tab key="categorySelector" value="categorySelector">
-          <div className="flex items-center gap-2">
-              <img src="img/playlist-svgrepo-com.svg"></img>
-              Pick a playlist from Spotify
-            </div>
-          </Tab>
-          <Tab key="enterPlaylistUrl" value="enterPlaylistUrl">
-          <div className="flex items-center gap-2">
-              <img src="img/playlist-url.svg"></img>
-              Enter a playist URL manually
-            </div>
-          </Tab>
-        </TabsHeader>
-        <TabsBody>
-          <TabPanel key="categorySelector" value="categorySelector">
-            <PlaylistSelectorAdvanced setLoading={setLoading} 
-              setError={setError}
-              setPlaylistUrl={setPlaylistUrl}
-              setPlaylistName={setPlaylistName} />
-          
-          </TabPanel>
-          <TabPanel key="enterPlaylistUrl" value="enterPlaylistUrl">
-              <input
-            type="text"
-            placeholder="Paste Spotify Playlist URL"
-            value={playlistUrl}
-            onChange={handlePlaylistUrlChange}
-            className="p-2 border rounded w-full max-w-md"
-          />
-          <button
-            onClick={handleRetrieveSongs}
-            className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
-          >
-            💃🏻 Get Songs 🕺🏻
-          </button>
-          </TabPanel>
-
-        </TabsBody>
-      </Tabs> */}
-
       <input
         type="text"
         placeholder="Paste Spotify Playlist URL"
@@ -168,8 +140,31 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
         onChange={handlePlaylistUrlChange}
         className="p-2 border rounded w-full max-w-md"
       />
+      {curatedPlaylists.length > 0 && (
+        <select
+          value={selectedCurated}
+          onChange={(e) => {
+            const id = e.target.value;
+            setSelectedCurated(id);
+            if (id) {
+              const url = `https://open.spotify.com/playlist/${id}`;
+              setPlaylistUrl(url);
+              // call handler using playlist id directly
+              void handleRetrieveSongs(id);
+            }
+          }}
+          className="mb-2 p-2 border rounded w-full max-w-md"
+        >
+          <option value="">Select a curated playlist (optional)</option>
+          {curatedPlaylists.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      )}
       <button
-        onClick={handleRetrieveSongs}
+        onClick={() => void handleRetrieveSongs()}
         className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
       >
         💃🏻 Get Songs 🕺🏻
