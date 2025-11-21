@@ -20,7 +20,7 @@ const currentToken = {
 
 const CLIENT_ID = '8ff46945b7414e13a7cabb0e9ac3ca8d';
 const REDIRECT_URI = window.location.origin + window.location.pathname;
-const SCOPES = 'streaming user-read-email user-read-private user-modify-playback-state';
+const SCOPES = 'streaming user-read-email user-read-private user-modify-playback-state playlist-read-private playlist-read-collaborative';
 
 let accessToken;
 
