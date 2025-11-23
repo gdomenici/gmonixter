@@ -28,7 +28,7 @@ const tokenHasExpired = () => {
   return false;
 };
 
-const SpotifyPlaylistCards: React.FC = () => {
+const App: React.FC = () => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
@@ -368,4 +368,4 @@ const SpotifyPlaylistCards: React.FC = () => {
   );
 };
 
-export default SpotifyPlaylistCards;
+export default App;

@@ -13,13 +13,9 @@
 
 # TODO
 
-- Address https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api
+- Allow more than 100 songs
+- Style the "other releases" table
 - Continue playlists gallery
 - MRU of recently used playlists
-- Allow more than 100 songs
-- Use customized audio player (see https://chatgpt.com/c/67336a30-b9e8-800b-bca0-28ee8dac587d)
-- Style the "other releases" table
 - Allow selecting part of the title for "previous releases" lookups
-- Handle the case where the token has expired differently (use refresh tokens, i.e. no need to reauthenticate)
 - Party mode 🕺🏻
-- Possibility to alternate between player view and QR code view (see doc/README.md)
