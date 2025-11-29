@@ -25,22 +25,26 @@ const SCOPES = 'streaming user-read-email user-read-private user-modify-playback
 let accessToken;
 
 // Check if we're returning from Spotify auth
-const hash = window.location.hash.substring(1);
-const params = new URLSearchParams(hash);
+const search = window.location.search.substring(1);
+const params = new URLSearchParams(search);
 
-if (!params.get('access_token')) {
+// if (params.get('error')) {
+//     const error = params.get("error");
+//     window.alert(`Error during authorization: ${error}`);
+// }
+
+if (!params.get('code')) {
     /*
     * PHASE 1: we go to obtain the code from Spotify
     */
-    const authUrl = `https://accounts.spotify.com/authorize?client_id=${CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES)}`;
+    const authUrl = `https://accounts.spotify.com/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES)}`;
     window.location.href = authUrl;
 
 } else {
-
     /*
     * PHASE 2: we have obtained the code from Spotify
     */
-    accessToken = params.get('access_token');
+    accessToken = params.get('code');
     var container = document.getElementById("root")!;
     container.innerHTML = `<div>Authenticated. Redirecting...</div>`;
     currentToken.save(accessToken);
