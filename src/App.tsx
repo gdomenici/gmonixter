@@ -28,7 +28,7 @@ const tokenHasExpired = () => {
   return false;
 };
 
-const SpotifyPlaylistCards: React.FC = () => {
+const App: React.FC = () => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
@@ -40,17 +40,19 @@ const SpotifyPlaylistCards: React.FC = () => {
   const [deviceId, setDeviceId] = useState<string |null>(null);  
   const [player, setPlayer] = useState<any>(null);  
 
-  const handleLoadExtraReleases = async (title: string, artist: string) => {
+  const handleLoadExtraReleases = async (songIndex: number) => {
     try {
       setLoading(true);
       setError(null);
 
+      const title = songs[songIndex].title;
+      const artist = songs[songIndex].artist;
+      // currentIndex
       let truncatedTitle = title;
       const remasteredIndex = title.search(/\-?\s?remastered/i);
       if (remasteredIndex > 0) {
         truncatedTitle = title.substring(0, remasteredIndex).trim();
       }
-      console.log(`truncatedTitle is ${truncatedTitle}`);
 
       // https://musicbrainz.org/doc/MusicBrainz_API/Search
       const musicBrainzUrl = new URL("https://musicbrainz.org/ws/2/release");
@@ -99,18 +101,28 @@ const SpotifyPlaylistCards: React.FC = () => {
     }
   };
 
-  const handlePrevious = () => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : songs.length - 1));
+  const handlePreviousNext = async (isNext: boolean) => {
+    let newIndex;
+
+    if (isNext) {
+      newIndex = currentIndex < songs.length - 1 ? currentIndex + 1 : 0;
+    } else {
+      newIndex = currentIndex > 0 ? currentIndex - 1 : songs.length - 1;
+    }
+    setCurrentIndex(newIndex);
     setIsInfoVisible(false);
     setError(null);
     setReleases([]);
+    playTrack(songs[newIndex].trackId);
+    await handleLoadExtraReleases(newIndex);
+  }
+
+  const handlePrevious = () => {
+    handlePreviousNext(false);
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev < songs.length - 1 ? prev + 1 : 0));
-    setIsInfoVisible(false);
-    setError(null);
-    setReleases([]);
+    handlePreviousNext(true);
   };
 
   const handleAuthentication = () => {
@@ -122,11 +134,11 @@ const SpotifyPlaylistCards: React.FC = () => {
     const rows: any = [];
     releases.forEach((oneRelease: Release) => {
       rows.push(
-        <tr>
-          <td>{oneRelease.year}</td>
-          <td>{oneRelease.country}</td>
-          <td>{oneRelease.mediaFormat}</td>
-          <td>{oneRelease.artistCredit}</td>
+        <tr className="border-b border-gray-200 last:border-b-0">
+          <td className="py-2 px-3">{oneRelease.year}</td>
+          <td className="py-2 px-3">{oneRelease.country}</td>
+          <td className="py-2 px-3">{oneRelease.mediaFormat}</td>
+          <td className="py-2 px-3">{oneRelease.artistCredit}</td>
         </tr>
       );
     });
@@ -142,7 +154,6 @@ const SpotifyPlaylistCards: React.FC = () => {
 
     playerInstance.addListener('ready', ({ device_id }: { device_id: string }) => {
       setDeviceId(device_id);
-      console.log('Player ready! Device ID:', device_id);
     });
 
     playerInstance.addListener('not_ready', ({ device_id }: { device_id: string }) => {
@@ -159,8 +170,35 @@ const SpotifyPlaylistCards: React.FC = () => {
     }
   };
 
+  const handleTokenExpiration = async() => {
+    if (tokenHasExpired()) {
+      const popup = window.open('authorize.html', 'spotify-auth', 'width=600,height=800');
+      const checkPopup = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkPopup);
+          if (!tokenHasExpired()) {
+            initializePlayer();
+          }
+        }
+      }, 500);
+      return;
+    }
+  }
+
+  const getEarliestReleaseYear = () => {
+    if (releases.length > 0) {
+      return releases[0].year; // they're already sorted by year
+    } else {
+      return songs[currentIndex].year;
+    }
+
+  };
+
   const playTrack = async (trackId: string) => {
+
     try {
+      await handleTokenExpiration();
+
       const response = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
         method: 'PUT',
         headers: {
@@ -175,6 +213,7 @@ const SpotifyPlaylistCards: React.FC = () => {
       if (!response.ok && response.status !== 204) {
         throw new Error(`Error loading track: ${response.statusText} (${response.status})`);
       }
+
     } catch (error) {
       setError('Error: ' + (error as Error).message);
     }
@@ -192,6 +231,11 @@ const SpotifyPlaylistCards: React.FC = () => {
           handlePrevious();
         } else if (event.key === "ArrowRight") {
           handleNext();
+        } else if (event.key === " ") {
+          event.preventDefault();
+          handlePauseResume();
+        } else if (event.key === "Enter") {
+          setIsInfoVisible(!isInfoVisible);
         }
       }
     };
@@ -200,7 +244,7 @@ const SpotifyPlaylistCards: React.FC = () => {
     return () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [songs.length]);
+  }, [songs.length, isInfoVisible]);
 
   useEffect(() => {
     if (songs.length > 0) {
@@ -209,8 +253,6 @@ const SpotifyPlaylistCards: React.FC = () => {
       script.src = 'https://sdk.scdn.co/spotify-player.js';
       script.async = true;
       document.body.appendChild(script);
-
-
       
       // Initialize Spotify Web Playback SDK
       (window as any).onSpotifyWebPlaybackSDKReady = () => {
@@ -220,6 +262,12 @@ const SpotifyPlaylistCards: React.FC = () => {
       };
     }
   }, [songs.length]);
+
+  useEffect(() => {
+    if (deviceId && songs.length > 0 && currentIndex === 0) {
+      playTrack(songs[0].trackId);
+    }
+  }, [deviceId]);
 
   // The user doesn't have a valid token
   if (isNewGame && (!getToken() || tokenHasExpired())) {
@@ -237,7 +285,7 @@ const SpotifyPlaylistCards: React.FC = () => {
     );
   }
 
-  // The user does have a valid token - new game started
+  // The user has a valid token - new game started
   if (isNewGame) {
     return (
       <PlaylistSelector
@@ -262,12 +310,6 @@ const SpotifyPlaylistCards: React.FC = () => {
           <div className="py-4 px-8">
             <div className="flex gap-2 mb-4">
               <button
-                onClick={() => playTrack(songs[currentIndex].trackId)}
-                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded"
-              >
-                Play Song 
-              </button>
-              <button
                 onClick={handlePauseResume}
                 className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
               >
@@ -275,60 +317,6 @@ const SpotifyPlaylistCards: React.FC = () => {
               </button>
             </div>
           </div>
-
-          <button
-            onClick={() => setIsInfoVisible(!isInfoVisible)}
-            className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-between"
-          >
-            <span>Click here to reveal info...</span>
-            {isInfoVisible ? (
-              <ChevronUp size={20} />
-            ) : (
-              <ChevronDown size={20} />
-            )}
-          </button>
-
-          {isInfoVisible && (
-            <div className="w-full mt-2 p-2">
-              <h3 className="text-lg font-medium">
-                {songs[currentIndex].title}
-              </h3>
-              <p className="text-gray-500">
-                {songs[currentIndex].year} - {songs[currentIndex].artist}
-              </p>
-
-              {songs[currentIndex].albumCoverArtUrl && (
-                <img src={songs[currentIndex].albumCoverArtUrl}></img>
-              )}
-
-              <a
-                href="#"
-                onClick={() =>
-                  handleLoadExtraReleases(
-                    songs[currentIndex].title,
-                    songs[currentIndex].artist
-                  )
-                }
-                className="text-gray-500"
-              >
-                Click to see other releases...
-              </a>
-
-              {releases.length > 0 && (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Year</th>
-                      <th>Country</th>
-                      <th>Format</th>
-                      <th>Artist credit</th>
-                    </tr>
-                  </thead>
-                  <tbody>{renderReleasesRows()}</tbody>
-                </table>
-              )}
-            </div>
-          )}
 
           <div className="flex justify-between w-full mt-4">
             <button
@@ -345,6 +333,48 @@ const SpotifyPlaylistCards: React.FC = () => {
             </button>
           </div>
 
+
+
+          <button
+            onClick={() => setIsInfoVisible(!isInfoVisible)}
+            className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-between mt-4"
+          >
+            <span>Click here to reveal info...</span>
+            {isInfoVisible ? (
+              <ChevronUp size={20} />
+            ) : (
+              <ChevronDown size={20} />
+            )}
+          </button>
+
+          {isInfoVisible && (
+            <div className="w-full mt-2 p-2">
+              <h3 className="text-lg font-medium">
+                {songs[currentIndex].title}
+              </h3>
+              <p className="text-gray-500">
+                {getEarliestReleaseYear()} - {songs[currentIndex].artist}
+              </p>
+
+              {songs[currentIndex].albumCoverArtUrl && (
+                <img src={songs[currentIndex].albumCoverArtUrl}></img>
+              )}
+
+              {releases.length > 0 && (
+                <table className="w-full mt-4 bg-gray-50 rounded">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="py-2 px-3 text-left text-sm font-medium">Year</th>
+                      <th className="py-2 px-3 text-left text-sm font-medium">Country</th>
+                      <th className="py-2 px-3 text-left text-sm font-medium">Format</th>
+                      <th className="py-2 px-3 text-left text-sm font-medium">Artist credit</th>
+                    </tr>
+                  </thead>
+                  <tbody>{renderReleasesRows()}</tbody>
+                </table>
+              )}
+            </div>
+          )}
           <div className="text-gray-400 text-sm mt-2">
             Song {currentIndex + 1} of {songs.length}
           </div>
@@ -368,4 +398,4 @@ const SpotifyPlaylistCards: React.FC = () => {
   );
 };
 
-export default SpotifyPlaylistCards;
+export default App;

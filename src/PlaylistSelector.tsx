@@ -77,41 +77,65 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
         throw new Error("Invalid playlist URL");
       }
 
-      const token = getToken();
-      const response = await fetch(
-        `https://api.spotify.com/v1/playlists/${playlistId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const MAX_ITEMS_IN_PLAYLIST = 1000;
+      const validSongs: Song[] = [];
+      let spotifyApiEndpoint = `https://api.spotify.com/v1/playlists/${playlistId}`;
+      let playlistName;
+      let endOfPlaylist = false;
+
+      while (!endOfPlaylist && validSongs.length <= MAX_ITEMS_IN_PLAYLIST) {
+        const token = getToken();
+        const response = await fetch(
+          spotifyApiEndpoint,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch playlist data");
         }
-      );
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch playlist data");
+        const playlist = await response.json();
+        if (!playlistName) {
+          playlistName = playlist.name;
+        }
+
+        console.log(`playlist has the following properties: ${Object.keys(playlist)}`);
+        // the second+ time around, we get no "tracks" property - the tracks object is at the top level
+        const tracks = playlist.tracks? playlist.tracks.items: playlist.items;
+        const next = playlist.tracks? playlist.tracks.next: playlist.next;
+
+        validSongs.push(
+          ...tracks 
+            .filter((item: any) => item.track)
+            .map((item: any) => ({
+              trackId: item.track.id,
+              title: item.track.name,
+              year: new Date(item.track.album.release_date).getFullYear(),
+              artist: item.track.artists[0].name,
+              previewUrl: item.track.preview_url,
+              albumCoverArtUrl: item.track.album?.images?.[0]?.url,
+          })));
+
+        if (validSongs.length === 0) {
+          throw new Error("No playable songs found in this playlist");
+        }
+
+        if (next) {
+          spotifyApiEndpoint = next;
+        } else {
+          endOfPlaylist = true;
+        }
       }
 
-      const playlist = await response.json();
-
-      const validSongs: Song[] = playlist.tracks.items
-        .filter((item: any) => item.track)
-        .map((item: any) => ({
-          trackId: item.track.id,
-          title: item.track.name,
-          year: new Date(item.track.album.release_date).getFullYear(),
-          artist: item.track.artists[0].name,
-          previewUrl: item.track.preview_url,
-          albumCoverArtUrl: item.track.album?.images?.[0]?.url,
-        }));
-
-      if (validSongs.length === 0) {
-        throw new Error("No playable songs found in this playlist");
-      }
 
       // Shuffle the filtered songs
       const shuffledSongs: Song[] = shuffleArray(validSongs);
 
-      setPlaylistName(playlist.name);
+      setPlaylistName(playlistName);
       setSongs(shuffledSongs);
       setIsNewGame(false);
       setCurrentIndex(0);
