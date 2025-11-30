@@ -40,11 +40,14 @@ const App: React.FC = () => {
   const [deviceId, setDeviceId] = useState<string |null>(null);  
   const [player, setPlayer] = useState<any>(null);  
 
-  const handleLoadExtraReleases = async (title: string, artist: string) => {
+  const handleLoadExtraReleases = async (songIndex: number) => {
     try {
       setLoading(true);
       setError(null);
 
+      const title = songs[songIndex].title;
+      const artist = songs[songIndex].artist;
+      // currentIndex
       let truncatedTitle = title;
       const remasteredIndex = title.search(/\-?\s?remastered/i);
       if (remasteredIndex > 0) {
@@ -99,22 +102,28 @@ const App: React.FC = () => {
     }
   };
 
-  const handlePrevious = () => {
-    const newIndex = currentIndex > 0 ? currentIndex - 1 : songs.length - 1;
+  const handlePreviousNext = async (isNext: boolean) => {
+    let newIndex;
+
+    if (isNext) {
+      newIndex = currentIndex < songs.length - 1 ? currentIndex + 1 : 0;
+    } else {
+      newIndex = currentIndex > 0 ? currentIndex - 1 : songs.length - 1;
+    }
     setCurrentIndex(newIndex);
     setIsInfoVisible(false);
     setError(null);
     setReleases([]);
     playTrack(songs[newIndex].trackId);
+    await handleLoadExtraReleases(newIndex);
+  }
+
+  const handlePrevious = () => {
+    handlePreviousNext(false);
   };
 
   const handleNext = () => {
-    const newIndex = currentIndex < songs.length - 1 ? currentIndex + 1 : 0
-    setCurrentIndex(newIndex);
-    setIsInfoVisible(false);
-    setError(null);
-    setReleases([]);
-    playTrack(songs[newIndex].trackId);
+    handlePreviousNext(true);
   };
 
   const handleAuthentication = () => {
@@ -163,7 +172,7 @@ const App: React.FC = () => {
     }
   };
 
-  const playTrack = async (trackId: string) => {
+  const handleTokenExpiration = async() => {
     if (tokenHasExpired()) {
       const popup = window.open('authorize.html', 'spotify-auth', 'width=600,height=800');
       const checkPopup = setInterval(() => {
@@ -176,8 +185,22 @@ const App: React.FC = () => {
       }, 500);
       return;
     }
+  }
+
+  const getEarliestReleaseYear = () => {
+    if (releases.length > 0) {
+      return releases[0].year; // they're already sorted by year
+    } else {
+      return songs[currentIndex].year;
+    }
+
+  };
+
+  const playTrack = async (trackId: string) => {
 
     try {
+      await handleTokenExpiration();
+
       const response = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
         method: 'PUT',
         headers: {
@@ -192,6 +215,7 @@ const App: React.FC = () => {
       if (!response.ok && response.status !== 204) {
         throw new Error(`Error loading track: ${response.statusText} (${response.status})`);
       }
+
     } catch (error) {
       setError('Error: ' + (error as Error).message);
     }
@@ -258,7 +282,7 @@ const App: React.FC = () => {
     );
   }
 
-  // The user does have a valid token - new game started
+  // The user has a valid token - new game started
   if (isNewGame) {
     return (
       <PlaylistSelector
@@ -309,25 +333,12 @@ const App: React.FC = () => {
                 {songs[currentIndex].title}
               </h3>
               <p className="text-gray-500">
-                {songs[currentIndex].year} - {songs[currentIndex].artist}
+                {getEarliestReleaseYear()} - {songs[currentIndex].artist}
               </p>
 
               {songs[currentIndex].albumCoverArtUrl && (
                 <img src={songs[currentIndex].albumCoverArtUrl}></img>
               )}
-
-              <a
-                href="#"
-                onClick={() =>
-                  handleLoadExtraReleases(
-                    songs[currentIndex].title,
-                    songs[currentIndex].artist
-                  )
-                }
-                className="text-gray-500"
-              >
-                Click to see other releases...
-              </a>
 
               {releases.length > 0 && (
                 <table>
