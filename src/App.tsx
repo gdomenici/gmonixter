@@ -100,17 +100,21 @@ const App: React.FC = () => {
   };
 
   const handlePrevious = () => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : songs.length - 1));
+    const newIndex = currentIndex > 0 ? currentIndex - 1 : songs.length - 1;
+    setCurrentIndex(newIndex);
     setIsInfoVisible(false);
     setError(null);
     setReleases([]);
+    playTrack(songs[newIndex].trackId);
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev < songs.length - 1 ? prev + 1 : 0));
+    const newIndex = currentIndex < songs.length - 1 ? currentIndex + 1 : 0
+    setCurrentIndex(newIndex);
     setIsInfoVisible(false);
     setError(null);
     setReleases([]);
+    playTrack(songs[newIndex].trackId);
   };
 
   const handleAuthentication = () => {
@@ -222,8 +226,6 @@ const App: React.FC = () => {
       script.src = 'https://sdk.scdn.co/spotify-player.js';
       script.async = true;
       document.body.appendChild(script);
-
-
       
       // Initialize Spotify Web Playback SDK
       (window as any).onSpotifyWebPlaybackSDKReady = () => {
@@ -233,6 +235,12 @@ const App: React.FC = () => {
       };
     }
   }, [songs.length]);
+
+  useEffect(() => {
+    if (deviceId && songs.length > 0 && currentIndex === 0) {
+      playTrack(songs[0].trackId);
+    }
+  }, [deviceId]);
 
   // The user doesn't have a valid token
   if (isNewGame && (!getToken() || tokenHasExpired())) {
@@ -274,12 +282,6 @@ const App: React.FC = () => {
           <h1 className="text-blue-500 text-lg">Playlist: {playlistName}</h1>
           <div className="py-4 px-8">
             <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => playTrack(songs[currentIndex].trackId)}
-                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded"
-              >
-                Play Song 
-              </button>
               <button
                 onClick={handlePauseResume}
                 className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
