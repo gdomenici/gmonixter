@@ -231,6 +231,11 @@ const App: React.FC = () => {
           handlePrevious();
         } else if (event.key === "ArrowRight") {
           handleNext();
+        } else if (event.key === " ") {
+          event.preventDefault();
+          handlePauseResume();
+        } else if (event.key === "Enter") {
+          setIsInfoVisible(!isInfoVisible);
         }
       }
     };
@@ -239,7 +244,7 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [songs.length]);
+  }, [songs.length, isInfoVisible]);
 
   useEffect(() => {
     if (songs.length > 0) {
