@@ -36,9 +36,12 @@ const generateCodeChallenge = async (verifier: string) => {
         .replace(/=/g, '');
 };
 
+
+// The code is wrapped in an immediately invoked async function (IIFE) to allow top-level await usage.
 (async () => {
     const params = new URLSearchParams(window.location.search);
 
+    // See https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow
     if (!params.get('code')) {
         const codeVerifier = generateCodeVerifier();
         localStorage.setItem('code_verifier', codeVerifier);
@@ -51,6 +54,7 @@ const generateCodeChallenge = async (verifier: string) => {
         const codeVerifier = localStorage.getItem('code_verifier')!;
         
         try {
+            // exchange the code for a token
             const response = await fetch('https://accounts.spotify.com/api/token', {
                 method: 'POST',
                 headers: {

@@ -160,6 +160,19 @@ const App: React.FC = () => {
   };
 
   const playTrack = async (trackId: string) => {
+    if (tokenHasExpired()) {
+      const popup = window.open('authorize.html', 'spotify-auth', 'width=600,height=800');
+      const checkPopup = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkPopup);
+          if (!tokenHasExpired()) {
+            initializePlayer();
+          }
+        }
+      }, 500);
+      return;
+    }
+
     try {
       const response = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
         method: 'PUT',
