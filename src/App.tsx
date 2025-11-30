@@ -135,11 +135,11 @@ const App: React.FC = () => {
     const rows: any = [];
     releases.forEach((oneRelease: Release) => {
       rows.push(
-        <tr>
-          <td>{oneRelease.year}</td>
-          <td>{oneRelease.country}</td>
-          <td>{oneRelease.mediaFormat}</td>
-          <td>{oneRelease.artistCredit}</td>
+        <tr className="border-b border-gray-200 last:border-b-0">
+          <td className="py-2 px-3">{oneRelease.year}</td>
+          <td className="py-2 px-3">{oneRelease.country}</td>
+          <td className="py-2 px-3">{oneRelease.mediaFormat}</td>
+          <td className="py-2 px-3">{oneRelease.artistCredit}</td>
         </tr>
       );
     });
@@ -315,9 +315,26 @@ const App: React.FC = () => {
             </div>
           </div>
 
+          <div className="flex justify-between w-full mt-4">
+            <button
+              onClick={handlePrevious}
+              className="flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded"
+            >
+              <ChevronLeft size={20} className="mr-1" /> Previous
+            </button>
+            <button
+              onClick={handleNext}
+              className="flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded"
+            >
+              Next <ChevronRight size={20} className="ml-1" />
+            </button>
+          </div>
+
+
+
           <button
             onClick={() => setIsInfoVisible(!isInfoVisible)}
-            className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-between"
+            className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-between mt-4"
           >
             <span>Click here to reveal info...</span>
             {isInfoVisible ? (
@@ -341,13 +358,13 @@ const App: React.FC = () => {
               )}
 
               {releases.length > 0 && (
-                <table>
+                <table className="w-full mt-4 bg-gray-50 rounded">
                   <thead>
-                    <tr>
-                      <th>Year</th>
-                      <th>Country</th>
-                      <th>Format</th>
-                      <th>Artist credit</th>
+                    <tr className="bg-gray-100">
+                      <th className="py-2 px-3 text-left text-sm font-medium">Year</th>
+                      <th className="py-2 px-3 text-left text-sm font-medium">Country</th>
+                      <th className="py-2 px-3 text-left text-sm font-medium">Format</th>
+                      <th className="py-2 px-3 text-left text-sm font-medium">Artist credit</th>
                     </tr>
                   </thead>
                   <tbody>{renderReleasesRows()}</tbody>
@@ -355,22 +372,6 @@ const App: React.FC = () => {
               )}
             </div>
           )}
-
-          <div className="flex justify-between w-full mt-4">
-            <button
-              onClick={handlePrevious}
-              className="flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded"
-            >
-              <ChevronLeft size={20} className="mr-1" /> Previous
-            </button>
-            <button
-              onClick={handleNext}
-              className="flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded"
-            >
-              Next <ChevronRight size={20} className="ml-1" />
-            </button>
-          </div>
-
           <div className="text-gray-400 text-sm mt-2">
             Song {currentIndex + 1} of {songs.length}
           </div>
