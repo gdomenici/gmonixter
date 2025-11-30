@@ -53,7 +53,6 @@ const App: React.FC = () => {
       if (remasteredIndex > 0) {
         truncatedTitle = title.substring(0, remasteredIndex).trim();
       }
-      console.log(`truncatedTitle is ${truncatedTitle}`);
 
       // https://musicbrainz.org/doc/MusicBrainz_API/Search
       const musicBrainzUrl = new URL("https://musicbrainz.org/ws/2/release");
@@ -155,7 +154,6 @@ const App: React.FC = () => {
 
     playerInstance.addListener('ready', ({ device_id }: { device_id: string }) => {
       setDeviceId(device_id);
-      console.log('Player ready! Device ID:', device_id);
     });
 
     playerInstance.addListener('not_ready', ({ device_id }: { device_id: string }) => {
