@@ -11,3 +11,4 @@
 
 - Had to downgrade `@types/react` to `18.2.19` (`npm install @types/react@18.2.19`) on account of [this bug](https://github.com/creativetimofficial/material-tailwind/issues/528#issuecomment-1856348865).
 
+- Tailwind CSS reference: https://tailwindcss.com/docs/styling-with-utility-classes

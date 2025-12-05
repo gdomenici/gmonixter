@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 
 import PlaylistSelector from "./PlaylistSelector";
 import PlayModeSelector from "./PlayModeSelector";
+import { PlayerInfo } from "./components/types/PlayerInfo";
 import Song from "./components/types/Song";
 import { PlayMode } from "./components/types/PlayMode";
 import { getToken } from "./components/Utils";
@@ -42,6 +43,7 @@ const App: React.FC = () => {
   const [deviceId, setDeviceId] = useState<string |null>(null);  
   const [player, setPlayer] = useState<any>(null);
   const [playMode, setPlayMode] = useState<PlayMode>(PlayMode.None);
+  const [playerInfos, setPlayerInfos] = useState<PlayerInfo[]>([]);
 
   const handleLoadExtraReleases = async (songIndex: number) => {
     try {
@@ -288,15 +290,16 @@ const App: React.FC = () => {
     );
   }
 
+  // Show play mode selection: The user is authenticated.
   if (isNewGame && playMode === PlayMode.None) {
     return (
-      <PlayModeSelector onModeSelect={setPlayMode} />
+      <PlayModeSelector onModeSelect={setPlayMode} onPlayerInfosSelect={setPlayerInfos} />
     )
   }
   
 
 
-  // The user has a valid token - new game started
+  // Show playlist selection: The user is authenticated and has selected a play mode. 
   if (isNewGame) {
     return (
       <PlaylistSelector
@@ -309,9 +312,7 @@ const App: React.FC = () => {
     );
   }
 
-  // Normal case - the user is logged on
-
-
+  // Normal game: the user is authenticated, has selected a play mode, and has selected a playlist.
   return (
     <div className="flex flex-col items-center">
 
