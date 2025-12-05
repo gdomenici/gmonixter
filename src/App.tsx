@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 
 import PlaylistSelector from "./PlaylistSelector";
+import PlayModeSelector from "./PlayModeSelector";
 import Song from "./components/types/Song";
+import { PlayMode } from "./components/types/PlayMode";
 import { getToken } from "./components/Utils";
 import Loading from "./components/ui/Loading";
 import ErrorUI from "./components/ui/ErrorUI";
@@ -38,7 +40,8 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [deviceId, setDeviceId] = useState<string |null>(null);  
-  const [player, setPlayer] = useState<any>(null);  
+  const [player, setPlayer] = useState<any>(null);
+  const [playMode, setPlayMode] = useState<PlayMode>(PlayMode.None);
 
   const handleLoadExtraReleases = async (songIndex: number) => {
     try {
@@ -284,6 +287,14 @@ const App: React.FC = () => {
       </div>
     );
   }
+
+  if (isNewGame && playMode === PlayMode.None) {
+    return (
+      <PlayModeSelector onModeSelect={setPlayMode} />
+    )
+  }
+  
+
 
   // The user has a valid token - new game started
   if (isNewGame) {
