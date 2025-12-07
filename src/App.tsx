@@ -233,13 +233,6 @@ const App: React.FC = () => {
         throw new Error(`Error loading track: ${response.statusText} (${response.status})`);
       }
 
-      // Use togglePlay for iOS compatibility
-      player?.getCurrentState().then((state: any) => {
-        if (state?.paused) {
-          player?.togglePlay();
-        }
-      });
-
     } catch (error) {
       setError('Error: ' + (error as Error).message);
     }
