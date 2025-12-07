@@ -177,11 +177,7 @@ const App: React.FC = () => {
       console.log('Device has gone offline:', device_id);
     });
 
-    playerInstance.addListener('player_state_changed', (state: any) => {
-      if (state && state.paused && state.track_window?.current_track) {
-        playerInstance.resume();
-      }
-    });
+
 
     try {
       playerInstance.connect();
@@ -237,7 +233,12 @@ const App: React.FC = () => {
         throw new Error(`Error loading track: ${response.statusText} (${response.status})`);
       }
 
-      player?.resume();
+      // Use togglePlay for iOS compatibility
+      player?.getCurrentState().then((state: any) => {
+        if (state?.paused) {
+          player?.togglePlay();
+        }
+      });
 
     } catch (error) {
       setError('Error: ' + (error as Error).message);
