@@ -231,6 +231,8 @@ const App: React.FC = () => {
         throw new Error(`Error loading track: ${response.statusText} (${response.status})`);
       }
 
+      player?.resume();
+
     } catch (error) {
       setError('Error: ' + (error as Error).message);
     }
