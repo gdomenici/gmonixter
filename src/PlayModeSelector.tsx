@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { PlayMode } from "./components/types/PlayMode";
 import { PlayerInfo } from "./components/types/PlayerInfo";
 import { AvatarSelector } from "./components/AvatarSelector";
@@ -24,7 +24,8 @@ const PlayModeSelector: React.FC<PlayModeSelectorProps> = ({ onModeSelect, onPla
       avatarUrl: avatarUrl || "",
       id: playerIndex,
       score: 0,
-      color: ""
+      color: "",
+      historyEntries: []
     };
     setPlayerInfos([...playerInfos, newPlayer]);
     setPlayerIndex(playerIndex + 1);

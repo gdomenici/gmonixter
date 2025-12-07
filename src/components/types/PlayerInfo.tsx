@@ -6,5 +6,5 @@ export interface PlayerInfo {
     color: string;
     id: number;
     avatarUrl: string;
-    historyEntries: PlayerHistoryEntry[]
+    historyEntries: PlayerHistoryEntry[];
 }
