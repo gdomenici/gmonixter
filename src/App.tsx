@@ -238,6 +238,60 @@ const App: React.FC = () => {
     }
   };
 
+  // Ensure the Web Playback SDK player is actually in "playing" state.
+  // On some platforms (notably iOS/iPadOS) playback may start paused —
+  // poll the player state a few times and toggle play if it's paused.
+  const ensurePlaying = async (maxRetries = 6, intervalMs = 500) => {
+    if (!player) return;
+
+    const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+    try {
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        // getCurrentState may return null until the player is fully ready
+        // so retry a few times before forcing a toggle.
+        if (typeof player.getCurrentState === "function") {
+          const state = await player.getCurrentState();
+          if (state === null) {
+            // no state yet, wait and retry
+            await sleep(intervalMs);
+            continue;
+          }
+
+          if (state && state.paused) {
+            if (typeof player.togglePlay === "function") {
+              try {
+                await player.togglePlay();
+              } catch (e) {
+                // Some player implementations return a Promise rejection
+                // — ignore and continue polling.
+                console.warn("togglePlay failed", e);
+              }
+            }
+            // give the player a moment to change state
+            await sleep(intervalMs);
+            continue;
+          }
+
+          // if not paused, we're good
+          return;
+        } else {
+          // fallback: if getCurrentState isn't available, try a toggle once
+          if (attempt === 0 && typeof player.togglePlay === "function") {
+            try {
+              await player.togglePlay();
+            } catch (e) {
+              console.warn("togglePlay fallback failed", e);
+            }
+          }
+          await sleep(intervalMs);
+        }
+      }
+    } catch (err) {
+      console.warn("ensurePlaying error", err);
+    }
+  };
+
   const handlePauseResume = () => {
     player?.togglePlay();
   };
@@ -283,9 +337,14 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (deviceId && songs.length > 0 && currentIndex === 0) {
-      playTrack(songs[0].trackId);
+      (async () => {
+        await playTrack(songs[0].trackId);
+        // try to ensure the SDK player is actually playing (iOS often starts paused)
+        await ensurePlaying();
+      })();
     }
-  }, [deviceId]);
+    // include `player` as it is used by ensurePlaying
+  }, [deviceId, player]);
 
   // The user doesn't have a valid token
   if (isNewGame && (!getToken() || tokenHasExpired())) {
