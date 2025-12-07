@@ -135,6 +135,18 @@ const App: React.FC = () => {
     return <></>;
   };
 
+  const handleStartNewGame = (backToHomeScreen: boolean = false) => {
+    player?.pause();
+    setIsNewGame(true);
+    setSongs([]);
+    setCurrentIndex(0);
+    setIsInfoVisible(false);
+    if (backToHomeScreen) {
+      setPlayMode(PlayMode.None);
+      setPlayerInfos([]);
+    }
+  }
+
   const renderReleasesRows = () => {
     const rows: any = [];
     releases.forEach((oneRelease: Release) => {
@@ -301,6 +313,8 @@ const App: React.FC = () => {
 
   // Show playlist selection: The user is authenticated and has selected a play mode. 
   if (isNewGame) {
+
+
     return (
       <PlaylistSelector
         setSongs={setSongs}
@@ -391,14 +405,29 @@ const App: React.FC = () => {
             Song {currentIndex + 1} of {songs.length}
           </div>
           <div className="w-full mt-2 p-2">
+            { playMode === PlayMode.Party && 
+              <a
+                href="#"
+                onClick={() => {
+                  handleStartNewGame(false);
+                }}
+                className="py-1 px-3 text-xs rounded hover:bg-blue-500"
+              >
+                <div className="flex items-center mb-2">
+                  <span>New Game (same players)</span>
+                </div>
+              </a>
+            }
             <a
               href="#"
               onClick={() => {
-                setIsNewGame(true);
+                handleStartNewGame(true);
               }}
               className="py-1 px-3 text-xs rounded hover:bg-blue-500"
             >
-              <span>New Game</span>
+              <div className="flex items-center mb-2">
+                <span>Back to home screen</span>
+              </div>
             </a>
           </div>
         </div>
