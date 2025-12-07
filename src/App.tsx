@@ -177,6 +177,12 @@ const App: React.FC = () => {
       console.log('Device has gone offline:', device_id);
     });
 
+    playerInstance.addListener('player_state_changed', (state: any) => {
+      if (state && state.paused && state.track_window?.current_track) {
+        playerInstance.resume();
+      }
+    });
+
     try {
       playerInstance.connect();
       setPlayer(playerInstance);
@@ -231,7 +237,7 @@ const App: React.FC = () => {
         throw new Error(`Error loading track: ${response.statusText} (${response.status})`);
       }
 
-      setTimeout(() => player?.resume(), 100);
+      player?.resume();
 
     } catch (error) {
       setError('Error: ' + (error as Error).message);
