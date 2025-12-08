@@ -44,6 +44,7 @@ const App: React.FC = () => {
   const [player, setPlayer] = useState<any>(null);
   const [playMode, setPlayMode] = useState<PlayMode>(PlayMode.None);
   const [playerInfos, setPlayerInfos] = useState<PlayerInfo[]>([]);
+  const [inGuessMode, setInGuessMode] = useState<boolean>(false);
 
   const handleLoadExtraReleases = async (songIndex: number) => {
     try {
@@ -242,6 +243,11 @@ const App: React.FC = () => {
     player?.togglePlay();
   };
 
+  const handleGuess = () => {
+    player?.pause();
+    setInGuessMode(true);
+  };
+
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (songs.length > 0) {
@@ -342,6 +348,14 @@ const App: React.FC = () => {
               >
                 Pause/Resume
               </button>
+              { playMode === PlayMode.Party && 
+                <button
+                  onClick={handlePauseResume}
+                  className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded"
+                >
+                  I am ready to guess!
+                </button>
+              }
             </div>
           </div>
 
