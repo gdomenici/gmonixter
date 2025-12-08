@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { deflate } from "zlib";
 
 interface GuessProps {
   onClose: () => void;
@@ -9,7 +10,7 @@ interface GuessProps {
     ) => void;
 }
 
-export const Guess: React.FC<GuessProps> = ({ onClose, onSelect }) => {
+const Guess: React.FC<GuessProps> = ({ onClose, onSelect }) => {
   const [guessedTitle, setGuessedTitle] = useState<boolean>(false);
   const [guessedArtist, setGuessedArtist] = useState<boolean>(false);
   const [guessedYearDistance, setGuessedYearDistance] = useState<number>(0);
@@ -20,15 +21,18 @@ export const Guess: React.FC<GuessProps> = ({ onClose, onSelect }) => {
         <h2 className="text-xl font-bold mb-4">Select Avatar</h2>
         <p>Did you guess any of the following?...</p>
         <div className="flex">
-          <input type="checkbox" onChange={(e) => setGuessedTitle(e.target.checked)}>
-          Did I guess the title?
-          </input> 
-          <input type="checkbox" onChange={(e) => setGuessedArtist(e.target.checked)}>
-          Did I guess the artist?
-          </input> 
-          <input type="text" onChange={(e) => setGuessedYearDistance(Number(e.target.value))}>
-          Did I guess the year by what distance?
-          </input> 
+          <label>
+            <input type="checkbox" onChange={(e) => setGuessedTitle(e.target.checked)} />
+            Did I guess the title?
+          </label>
+          <label>
+            <input type="checkbox" onChange={(e) => setGuessedArtist(e.target.checked)} />
+            Did I guess the artist?
+          </label>
+          <label>
+            <input type="text" onChange={(e) => setGuessedYearDistance(Number(e.target.value))} />
+            Did I guess the year by what distance?
+          </label>
         </div>
 
         <button onClick={() => {
@@ -41,3 +45,6 @@ export const Guess: React.FC<GuessProps> = ({ onClose, onSelect }) => {
     </div>
   );
 };
+
+
+export default Guess;

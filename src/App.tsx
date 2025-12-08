@@ -8,6 +8,7 @@ import { PlayMode } from "./components/types/PlayMode";
 import { getToken } from "./components/Utils";
 import Loading from "./components/ui/Loading";
 import ErrorUI from "./components/ui/ErrorUI";
+import Guess from "./components/Guess";
 
 import {
   ChevronLeft,
@@ -44,8 +45,8 @@ const App: React.FC = () => {
   const [player, setPlayer] = useState<any>(null);
   const [playMode, setPlayMode] = useState<PlayMode>(PlayMode.None);
   const [playerInfos, setPlayerInfos] = useState<PlayerInfo[]>([]);
-  const [inGuessMode, setInGuessMode] = useState<boolean>(false);
-
+  const [isGuessUIVisible, setIsGuessUIVisible] = useState<boolean>(true);
+  
   const handleLoadExtraReleases = async (songIndex: number) => {
     try {
       setLoading(true);
@@ -119,6 +120,7 @@ const App: React.FC = () => {
     setIsInfoVisible(false);
     setError(null);
     setReleases([]);
+    setIsGuessUIVisible(true);
     playTrack(songs[newIndex].trackId);
     await handleLoadExtraReleases(newIndex);
   }
@@ -243,10 +245,23 @@ const App: React.FC = () => {
     player?.togglePlay();
   };
 
-  const handleGuess = () => {
-    player?.pause();
-    setInGuessMode(true);
-  };
+  const handleGuess = (
+    guessedTitle: boolean,
+    guessedArtist: boolean,
+    guessedYearDistance: number
+    ) => {
+      
+      //////////////////////
+      //
+      // CONTINUE FROM HERE!
+      // Todo:
+      // - Calculate score correctly
+      // - Fix <Guess> so that it's not visually wonky
+      //////////////////////
+      console.log(`guessedTitle: ${guessedTitle}, guessedArtist=${guessedArtist}, guessedYearDistance=${guessedYearDistance}`);
+
+    }
+
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -348,14 +363,6 @@ const App: React.FC = () => {
               >
                 Pause/Resume
               </button>
-              { playMode === PlayMode.Party && 
-                <button
-                  onClick={handlePauseResume}
-                  className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded"
-                >
-                  I am ready to guess!
-                </button>
-              }
             </div>
           </div>
 
@@ -414,6 +421,15 @@ const App: React.FC = () => {
                   <tbody>{renderReleasesRows()}</tbody>
                 </table>
               )}
+              { playMode === PlayMode.Party && isGuessUIVisible && (
+                <Guess 
+                  onClose={() => setIsGuessUIVisible(false)} 
+                  onSelect={(guessedTitle: boolean, guessedArtist: boolean, guessedYearDistance: number) => 
+                    handleGuess(guessedTitle, guessedArtist, guessedYearDistance)} />
+
+              )
+
+              }
             </div>
           )}
           <div className="text-gray-400 text-sm mt-2">
