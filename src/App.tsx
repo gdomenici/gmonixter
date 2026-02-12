@@ -60,11 +60,16 @@ const App: React.FC = () => {
           {
             role: "system",
             content:
-              'You are a music encyclopedia. Return a JSON array of known releases for a given song. Each element must have exactly these fields: "year" (number), "country" (string, 2-letter ISO code), "mediaFormat" (string, e.g. "Vinyl", "CD", "Digital Media", "Cassette"), "artistCredit" (string). Return only the JSON array, no other text.',
+              `You are a music encyclopedia. Return a JSON array of known releases for a given song. 
+              Each element must have exactly these fields: "year" (number), "country" (string, 2-letter ISO code), 
+              "mediaFormat" (string, e.g. "Vinyl", "CD", "Digital Media", "Cassette"), "artistCredit" (string). 
+              Return only the JSON array, no other text.`,
           },
           {
             role: "user",
-            content: `List all known releases for the song "${title}" by ${artist}.`,
+            content: `List all known releases for the song "${title}" by ${artist}. If the title contains words 
+            implying this is derivative content, return releases for the _original_ title. Examples of such words
+            are, "Remaster", "Remastered", "Live", "Radio Edit", "Radio Version".`,
           },
         ],
       }),
