@@ -40,63 +40,6 @@ const App: React.FC = () => {
   const [deviceId, setDeviceId] = useState<string |null>(null);
   const [player, setPlayer] = useState<any>(null);
   const [releasesSource, setReleasesSource] = useState<"musicbrainz" | "openai" | null>(null);
-  const [pendingOpenAIQuery, setPendingOpenAIQuery] = useState<{ title: string; artist: string } | null>(null);
-  const [openaiKeyInput, setOpenaiKeyInput] = useState<string>("");  
-
-  const fetchReleasesFromOpenAI = async (title: string, artist: string): Promise<Release[]> => {
-    const apiKey = localStorage.getItem("openai_api_key");
-    if (!apiKey) return [];
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.2,
-        messages: [
-          {
-            role: "system",
-            content:
-              `You are a music encyclopedia. Return a JSON array of known releases for a given song. 
-              Each element must have exactly these fields: "year" (number), "country" (string, 2-letter ISO code), 
-              "mediaFormat" (string, e.g. "Vinyl", "CD", "Digital Media", "Cassette"), "artistCredit" (string). 
-              Return only the JSON array, no other text.`,
-          },
-          {
-            role: "user",
-            content: `List all known releases for the song "${title}" by ${artist}. If the title contains words 
-            implying this is derivative content, return releases for the _original_ title. Examples of such words
-            are, "Remaster", "Remastered", "Live", "Radio Edit", "Radio Version".`,
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      console.warn("OpenAI API error:", response.status, response.statusText);
-      return [];
-    }
-
-    const data = await response.json();
-    let content: string = data.choices?.[0]?.message?.content ?? "[]";
-
-    // Strip markdown fences if present
-    content = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
-
-    const parsed: any[] = JSON.parse(content);
-    return parsed
-      .filter(
-        (r) =>
-          typeof r.year === "number" &&
-          typeof r.country === "string" &&
-          typeof r.mediaFormat === "string" &&
-          typeof r.artistCredit === "string"
-      )
-      .sort((a, b) => a.year - b.year);
-  };
 
   const handleLoadExtraReleases = async (songIndex: number) => {
     try {
@@ -150,18 +93,20 @@ const App: React.FC = () => {
         setReleases(tempReleases);
         setReleasesSource("musicbrainz");
       } else {
-        // MusicBrainz returned nothing — try OpenAI fallback
-        const apiKey = localStorage.getItem("openai_api_key");
-        if (apiKey) {
-          try {
-            const aiReleases = await fetchReleasesFromOpenAI(title, artist);
+        // MusicBrainz returned nothing — try OpenAI fallback via backend
+        try {
+          const aiUrl = new URL("/.netlify/functions/retrieve-releases", window.location.origin);
+          aiUrl.searchParams.set("title", title);
+          aiUrl.searchParams.set("artist", artist);
+
+          const aiResponse = await fetch(aiUrl.toString());
+          if (aiResponse.ok) {
+            const aiReleases: Release[] = await aiResponse.json();
             setReleases(aiReleases);
             setReleasesSource(aiReleases.length > 0 ? "openai" : null);
-          } catch (aiErr) {
-            console.warn("OpenAI fallback error:", aiErr);
           }
-        } else {
-          setPendingOpenAIQuery({ title, artist });
+        } catch (aiErr) {
+          console.warn("OpenAI fallback error:", aiErr);
         }
       }
     } catch (err) {
@@ -188,7 +133,6 @@ const App: React.FC = () => {
     setError(null);
     setReleases([]);
     setReleasesSource(null);
-    setPendingOpenAIQuery(null);
     playTrack(songs[newIndex].trackId);
     await handleLoadExtraReleases(newIndex);
   }
@@ -442,50 +386,6 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              {pendingOpenAIQuery && (
-                <div className="w-full mt-4 p-3 bg-gray-50 rounded border border-gray-200">
-                  <p className="text-sm text-gray-600 mb-2">
-                    No MusicBrainz results found. Enter an OpenAI API key to try AI-powered lookup:
-                  </p>
-                  <input
-                    type="password"
-                    value={openaiKeyInput}
-                    onChange={(e) => setOpenaiKeyInput(e.target.value)}
-                    placeholder="sk-..."
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded mb-2"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={async () => {
-                        localStorage.setItem("openai_api_key", openaiKeyInput);
-                        const { title, artist } = pendingOpenAIQuery;
-                        setPendingOpenAIQuery(null);
-                        setOpenaiKeyInput("");
-                        try {
-                          const aiReleases = await fetchReleasesFromOpenAI(title, artist);
-                          setReleases(aiReleases);
-                          setReleasesSource(aiReleases.length > 0 ? "openai" : null);
-                        } catch (aiErr) {
-                          console.warn("OpenAI fallback error:", aiErr);
-                        }
-                      }}
-                      className="px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded"
-                    >
-                      Save &amp; Fetch
-                    </button>
-                    <button
-                      onClick={() => {
-                        setPendingOpenAIQuery(null);
-                        setOpenaiKeyInput("");
-                      }}
-                      className="px-3 py-1.5 text-sm bg-gray-200 hover:bg-gray-300 rounded"
-                    >
-                      Skip
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {releases.length > 0 && (
                 <table className="w-full mt-4 bg-gray-50 rounded">
                   <thead>
@@ -514,21 +414,6 @@ const App: React.FC = () => {
             >
               <span>New Game</span>
             </a>
-            {localStorage.getItem("openai_api_key") && (
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (window.confirm("Clear stored OpenAI API key?")) {
-                    localStorage.removeItem("openai_api_key");
-                    setReleasesSource(null);
-                  }
-                }}
-                className="py-1 px-3 text-xs text-gray-400 hover:text-gray-600"
-              >
-                OpenAI key configured
-              </a>
-            )}
           </div>
         </div>
       )}
