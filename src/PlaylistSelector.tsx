@@ -104,20 +104,19 @@ const PlaylistSelector: React.FC<PlaylistSelectorProps> = ({
         }
 
         console.log(`playlist has the following properties: ${Object.keys(playlist)}`);
-        // the second+ time around, we get no "tracks" property - the tracks object is at the top level
-        const tracks = playlist.tracks? playlist.tracks.items: playlist.items;
-        const next = playlist.tracks? playlist.tracks.next: playlist.next;
+        const tracks = playlist.items.items;
+        const next = playlist.items.next;
 
         validSongs.push(
-          ...tracks 
-            .filter((item: any) => item.track)
+          ...tracks
+            .filter((item: any) => item.item)
             .map((item: any) => ({
-              trackId: item.track.id,
-              title: item.track.name,
-              year: new Date(item.track.album.release_date).getFullYear(),
-              artist: item.track.artists[0].name,
-              previewUrl: item.track.preview_url,
-              albumCoverArtUrl: item.track.album?.images?.[0]?.url,
+              trackId: item.item.id,
+              title: item.item.name,
+              year: new Date(item.item.album.release_date).getFullYear(),
+              artist: item.item.artists[0].name,
+              previewUrl: item.item.preview_url,
+              albumCoverArtUrl: item.item.album?.images?.[0]?.url,
           })));
 
         if (validSongs.length === 0) {
